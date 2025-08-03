@@ -1,14 +1,30 @@
 const express = require('express');
+const multer = require('multer');
+const excuseController = require('../controllers/excuse.controller');
 const router = express.Router();
-const excuseController = require('../controllers/excuseController');
-const upload = require('../middleware/upload');
+
+const upload = multer({ storage: multer.memoryStorage() });
 
 router.post('/submit', upload.single('attachment'), excuseController.submitExcuse);
-router.get('/history/:empId', excuseController.getExcuseHistory);
-router.get('/status/:empId', excuseController.getExcuseStatus);
-router.put('/approve/:excuseId', excuseController.approveRejectExcuse);
-router.get('/pending/:managerId', excuseController.getPendingExcuses);
-router.delete('/cancel/:excuseId', excuseController.cancelExcuse);
-router.get('/types', excuseController.getExcuseTypes);
+router.get('/getExcuseHistory', excuseController.getExcuseHistory);
+router.get('/getExcuseStatus', excuseController.getExcuseStatus);
+router.put('/approveRejectExcuse', excuseController.approveRejectExcuse);
+router.get('/getPendingExcuses', excuseController.getPendingExcuses);
+router.delete('/cancelExcuse', excuseController.cancelExcuse);
+router.get('/getExcuseTypes', excuseController.getExcuseTypes);
+router.get('/getExcuseById', excuseController.getExcuseById);
+router.get('/downloadExcuseAttachment', excuseController.downloadExcuseAttachment);
+router.get('/getExcuseTransactions',excuseController.getExcuseTransactions);
+router.get('/getExcuseRequestDetails',excuseController.getExcuseRequestDetails);
+router.post('/submitExcuse',excuseController.submitExcuse);
+router.post('/submitExcuseOnBehalf',excuseController.submitExcuseOnBehalf)
+router.patch('/editExcuseRequest',excuseController.editExcuseRequest)
+router.post('/draftSaveExcuseRequest',excuseController.draftSaveExcuseRequest)
+router.get('/getPendingExcuseRequests',excuseController.getPendingExcuseRequests)
+router.get('/getPendingExcuseRequests',excuseController.getPendingExcuseRequests)
+router.get('/getPendingExcuseRequestDetails',excuseController.getPendingExcuseRequestDetails)
+router.patch('/approveRejectExcuseRequest',excuseController.approveRejectExcuseRequest)
+router.patch('/changeExcuseApproval',excuseController.changeExcuseApproval)
+router.post('/delegateExcuseApproval',excuseController.delegateExcuseApproval)
 
 module.exports = router;

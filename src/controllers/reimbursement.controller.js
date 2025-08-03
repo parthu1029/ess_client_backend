@@ -1,136 +1,203 @@
-const reimbursementService = require('../services/reimbursementService');
-const notificationService = require('../services/notificationService');
+const reimbursementService = require('../services/reimbursement.service');
 
+// Submit a reimbursement (with receipt upload)
 exports.submitReimbursement = async (req, res) => {
-    try {
-        const { empId, type, amount, comment, expenseDate } = req.body;
-        
-        let receiptData = null;
-        if (req.file) {
-            receiptData = {
-                buffer: req.file.buffer,
-                fileName: req.file.originalname,
-                mimeType: req.file.mimetype,
-                size: req.file.size
-            };
-        }
-        
-        const reimbursementId = await reimbursementService.submitReimbursement({
-            empId,
-            type,
-            amount: parseFloat(amount),
-            comment,
-            expenseDate,
-            receiptData
-        });
-        
-        // Get manager ID and send notification
-        const managerId = await reimbursementService.getManagerId(empId);
-        if (managerId) {
-            await notificationService.sendNotification(
-                managerId,
-                'New Reimbursement Request',
-                `Reimbursement request of ₹${amount} from ${empId}`,
-                'reimbursement'
-            );
-        }
-        
-        console.log(`REIMBURSEMENT: ${empId} submitted ${type} claim for ₹${amount}`);
-        res.json({ 
-            message: 'Reimbursement request submitted successfully',
-            reimbursementId 
-        });
-    } catch (error) {
-        console.error('Reimbursement submission error:', error);
-        res.status(500).json({ error: 'Failed to submit reimbursement request' });
-    }
+  try {
+    await reimbursementService.submitReimbursement(req.body, req.file?.buffer);
+    res.json({ message: "Reimbursement request submitted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.getReimbursementHistory = async (req, res) => {
-    try {
-        const { empId } = req.params;
-        const { startDate, endDate, status } = req.query;
-        
-        const history = await reimbursementService.getReimbursementHistory(empId, {
-            startDate,
-            endDate,
-            status
-        });
-        
-        res.json(history);
-    } catch (error) {
-        console.error('Reimbursement history error:', error);
-        res.status(500).json({ error: 'Failed to fetch reimbursement history' });
-    }
+  try {
+    const { EmpID } = req.query;
+    const history = await reimbursementService.getReimbursementHistory(EmpID);
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.getReimbursementStatus = async (req, res) => {
-    try {
-        const { empId } = req.params;
-        const status = await reimbursementService.getReimbursementStatus(empId);
-        res.json(status);
-    } catch (error) {
-        console.error('Reimbursement status error:', error);
-        res.status(500).json({ error: 'Failed to fetch reimbursement status' });
-    }
+  try {
+    const { ReimbursementID } = req.query;
+    const status = await reimbursementService.getReimbursementStatus(ReimbursementID);
+    res.json(status);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.approveRejectReimbursement = async (req, res) => {
-    try {
-        const { reimbursementId } = req.params;
-        const { action, remarks, managerId } = req.body;
-        
-        const result = await reimbursementService.approveRejectReimbursement(
-            reimbursementId, 
-            action, 
-            remarks
-        );
-        
-        // Send notification to employee
-        await notificationService.sendNotification(
-            result.empId,
-            'Reimbursement Update',
-            `Your reimbursement request has been ${action}d`,
-            'reimbursement'
-        );
-        
-        res.json({ message: `Reimbursement request ${action}d successfully` });
-    } catch (error) {
-        console.error('Reimbursement approval error:', error);
-        res.status(500).json({ error: 'Failed to process reimbursement approval' });
-    }
+  try {
+    await reimbursementService.approveRejectReimbursement(req.body.ReimbursementID, req.body.action);
+    res.json({ message: `Reimbursement request ${req.body.action}d` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.getReimbursementTypes = async (req, res) => {
-    try {
-        const types = await reimbursementService.getReimbursementTypes();
-        res.json(types);
-    } catch (error) {
-        console.error('Reimbursement types error:', error);
-        res.status(500).json({ error: 'Failed to fetch reimbursement types' });
-    }
+  try {
+    const types = await reimbursementService.getReimbursementTypes();
+    res.json(types);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.getPendingReimbursements = async (req, res) => {
-    try {
-        const { managerId } = req.params;
-        const pending = await reimbursementService.getPendingReimbursements(managerId);
-        res.json(pending);
-    } catch (error) {
-        console.error('Pending reimbursements error:', error);
-        res.status(500).json({ error: 'Failed to fetch pending reimbursements' });
-    }
+  try {
+    const { EmpID } = req.query;
+    const pending = await reimbursementService.getPendingReimbursements(EmpID);
+    res.json(pending);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
 exports.cancelReimbursement = async (req, res) => {
-    try {
-        const { reimbursementId } = req.params;
-        const { empId } = req.body;
-        
-        await reimbursementService.cancelReimbursement(reimbursementId, empId);
-        res.json({ message: 'Reimbursement request cancelled successfully' });
-    } catch (error) {
-        console.error('Reimbursement cancellation error:', error);
-        res.status(500).json({ error: 'Failed to cancel reimbursement request' });
+  try {
+    await reimbursementService.cancelReimbursement(req.query.ReimbursementID);
+    res.json({ message: "Reimbursement request cancelled" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getReimbursementById = async (req, res) => {
+  try {
+    const { ReimbursementID } = req.query;
+    const result = await reimbursementService.getReimbursementById(ReimbursementID);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.downloadReceipt = async (req, res) => {
+  try {
+    const { ReimbursementID } = req.query;
+    const buffer = await reimbursementService.downloadReceipt(ReimbursementID);
+    if (buffer) {
+      res.set('Content-Type', 'application/pdf');
+      res.send(buffer);
+    } else {
+      res.status(404).json({ error: "Receipt not found" });
     }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Counts and totals for an employee
+exports.getReimbursementSummary = async (req, res) => {
+  try {
+    const { EmpID } = req.query;
+    const summary = await reimbursementService.getReimbursementSummary(EmpID);
+    res.json(summary);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getReimbursementTransactions = async (req, res) => {
+  try {
+    const { EmpID } = req.query;
+    const txs = await reimbursementService.getReimbursementTransactions(EmpID);
+    res.json(txs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getReimbursementRequestDetails = async (req, res) => {
+  try {
+    const { EmpID } = req.query;
+    const details = await reimbursementService.getReimbursementRequestDetails(EmpID);
+    res.json(details);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.submitReimbursementRequest = async (req, res) => {
+  try {
+    await reimbursementService.submitReimbursementRequest(req.body, req.file?.buffer);
+    res.json({ message: "Reimbursement request submitted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.submitReimbursementRequestOnBehalf = async (req, res) => {
+  try {
+    await reimbursementService.submitReimbursementRequestOnBehalf(req.body, req.file?.buffer);
+    res.json({ message: "Reimbursement request submitted on behalf" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.editReimbursementRequest = async (req, res) => {
+  try {
+    await reimbursementService.editReimbursementRequest(req.body.ReimbursementID, req.body);
+    res.json({ message: "Reimbursement request edited" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.draftSaveReimbursementRequest = async (req, res) => {
+  try {
+    await reimbursementService.draftSaveReimbursementRequest(req.body, req.file?.buffer);
+    res.json({ message: "Reimbursement draft saved" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.delegateReimbursementApproval = async (req, res) => {
+  // Not possible in your ERD
+  res.json({ error: "Delegation structure not present in current schema." });
+};
+
+exports.changeReimbursementApproval = async (req, res) => {
+  try {
+    await reimbursementService.changeReimbursementApproval(req.body.ReimbursementID, req.body.status);
+    res.json({ message: "Reimbursement approval status updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.approveRejectReimbursementRequest = async (req, res) => {
+  try {
+    await reimbursementService.approveRejectReimbursementRequest(req.body.ReimbursementID, req.body.action);
+    res.json({ message: `Reimbursement ${req.body.action}d` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getPendingReimbursementRequestDetails = async (req, res) => {
+  try {
+    const { ReimbursementID } = req.query;
+    const details = await reimbursementService.getPendingReimbursementRequestDetails(ReimbursementID);
+    res.json(details);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getPendingReimbursementRequests = async (req, res) => {
+  try {
+    const { EmpID } = req.query;
+    const result = await reimbursementService.getPendingReimbursementRequests(EmpID);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };

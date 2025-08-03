@@ -1,11 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const attendanceController = require('../controllers/attendanceController');
+const attendanceController = require('../controllers/attendance.controller');
 
-router.post('/mark', attendanceController.markAttendance);
-router.get('/status/:empId', attendanceController.getDailyStatus);
-router.get('/history/:empId', attendanceController.getAttendanceHistory);
-router.get('/summary/:empId', attendanceController.getMonthlySummary);
-router.put('/update/:empId', attendanceController.updateAttendance); // Admin only
+router.post('/markAttendance', attendanceController.markAttendance);
+router.get('/getDailyStatus', attendanceController.getDailyStatus);
+router.get('/getAttendanceHistory', attendanceController.getAttendanceHistory);
+router.get('/getMonthlySummary', attendanceController.getMonthlySummary);
+router.put('/updateAttendance', attendanceController.updateAttendance); 
+router.get('/getCheckinCheckoutTime',attendanceController.getCheckinCheckoutTime)
+router.get('/getCheckinCheckoutHistory',attendanceController.getCheckinCheckoutHistory)
 
 module.exports = router;

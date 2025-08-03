@@ -1,30 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const profileController = require('../controllers/profileController');
-const multer = require('multer');
+const upload = require('../middlewares/upload');
+const profileController = require('../controllers/profile.controller');
 
-// Configure multer for memory storage
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage,
-    limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB limit for photos
-    },
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
-        if (allowedTypes.includes(file.mimetype)) {
-            cb(null, true);
-        } else {
-            cb(new Error('Invalid file type'), false);
-        }
-    }
-});
-
-router.get('/:empId', profileController.getProfile);
-router.put('/:empId', profileController.updateProfile);
-router.post('/:empId/photo', upload.single('photo'), profileController.uploadPhoto);
-router.get('/:empId/photo', profileController.getPhoto);
-router.delete('/:empId/photo', profileController.deletePhoto);
-router.get('/:empId/summary', profileController.getEmploymentSummary);
+router.get('/getProfile', profileController.getProfile);
+router.put('/updateProfile', profileController.updateProfile);
+router.post('/uploadPhoto', upload.single('photo'), profileController.uploadPhoto);
+router.get('/getPhoto', profileController.getPhoto);
+router.delete('/deletePhoto', profileController.deletePhoto);
+router.get('/getEmploymentSummary', profileController.getEmploymentSummary);
+router.get('/getPersonalInfo', profileController.getPersonalInfo);
+router.put('/updatePersonalInfo', profileController.updatePersonalInfo);
+router.get('/getContactInfo', profileController.getContactInfo);
+router.put('/updateContactInfo', profileController.updateContactInfo);
+router.get('/getProfileSummary', profileController.getProfileSummary);
+router.get('/getCalendar', profileController.getCalendar);
 
 module.exports = router;

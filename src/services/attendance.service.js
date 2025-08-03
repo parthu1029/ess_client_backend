@@ -1,104 +1,103 @@
-const { pool } = require('../config/database');
 const sql = require('mssql');
+const dbConfig = require('../config/db.config');
 
-exports.checkIn = async (empId) => {
-    const checkInTime = new Date();
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('checkInTime', sql.DateTime, checkInTime);
-    
-    await request.query(`
-        INSERT INTO AttendanceTable (EmpID, CheckInTime, Date)
-        VALUES (@empId, @checkInTime, CAST(GETDATE() AS DATE))
+// Mark attendance (insert or update for date)
+async function markAttendance(EmpID, data) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Date', sql.Date, data.date)
+    .input('Status', sql.VarChar(10), data.status) // e.g., 'Present', 'Absent'
+    .input('CheckIn', sql.Time, data.checkIn)
+    .input('CheckOut', sql.Time, data.checkOut)
+    .query(`
+      MERGE AttendanceTable AS target
+      USING (SELECT @EmpID AS EmpID, @Date AS Date) AS source
+      ON (target.EmpID = source.EmpID AND target.Date = source.Date)
+      WHEN MATCHED THEN
+        UPDATE SET Status = @Status, CheckIn = @CheckIn, CheckOut = @CheckOut
+      WHEN NOT MATCHED THEN
+        INSERT (EmpID, Date, Status, CheckIn, CheckOut)
+        VALUES (@EmpID, @Date, @Status, @CheckIn, @CheckOut); 
     `);
-    
-    return { time: checkInTime };
-};
+}
 
-exports.checkOut = async (empId) => {
-    const checkOutTime = new Date();
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('checkOutTime', sql.DateTime, checkOutTime);
-    
-    await request.query(`
-        UPDATE AttendanceTable 
-        SET CheckOutTime = @checkOutTime,
-            WorkingHours = DATEDIFF(HOUR, CheckInTime, @checkOutTime)
-        WHERE EmpID = @empId AND Date = CAST(GETDATE() AS DATE)
+// Get attendace status for the day
+async function getDailyStatus(EmpID, date) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Date', sql.Date, date)
+    .query('SELECT Status FROM AttendanceTable WHERE EmpID = @EmpID AND Date = @Date');
+  return result.recordset[0];
+}
+
+// Get attendance history (all records)
+async function getAttendanceHistory(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM AttendanceTable WHERE EmpID = @EmpID ORDER BY Date DESC');
+  return result.recordset;
+}
+
+// Get monthly summary
+async function getMonthlySummary(EmpID, month, year) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Month', sql.Int, month)
+    .input('Year', sql.Int, year)
+    .query(`
+      SELECT Status, COUNT(*) AS Days
+      FROM AttendanceTable 
+      WHERE EmpID = @EmpID 
+        AND MONTH(Date) = @Month 
+        AND YEAR(Date) = @Year
+      GROUP BY Status
     `);
-    
-    return { time: checkOutTime };
-};
+  return result.recordset;
+}
 
-exports.getDailyStatus = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT CheckInTime, CheckOutTime, WorkingHours, Status
-        FROM AttendanceTable
-        WHERE EmpID = @empId AND Date = CAST(GETDATE() AS DATE)
-    `);
-    
-    return result.recordset[0] || { status: 'Not checked in' };
-};
+// Update a day's attendance record
+async function updateAttendance(EmpID, data) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Date', sql.Date, data.date)
+    .input('Status', sql.VarChar(10), data.status)
+    .input('CheckIn', sql.Time, data.checkIn)
+    .input('CheckOut', sql.Time, data.checkOut)
+    .query(`UPDATE AttendanceTable  
+            SET Status = @Status, CheckIn = @CheckIn, CheckOut = @CheckOut
+            WHERE EmpID = @EmpID AND Date = @Date`);
+}
 
-exports.getMonthlySummary = async (empId, filters = {}) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('month', sql.Int, filters.month || new Date().getMonth() + 1);
-    request.input('year', sql.Int, filters.year || new Date().getFullYear());
-    
-    const result = await request.query(`
-        SELECT 
-            COUNT(*) as TotalDays,
-            COUNT(CASE WHEN CheckInTime IS NOT NULL THEN 1 END) as PresentDays,
-            COUNT(CASE WHEN CheckInTime IS NULL THEN 1 END) as AbsentDays,
-            COUNT(CASE WHEN DATEPART(HOUR, CheckInTime) > 9 THEN 1 END) as LateDays,
-            SUM(WorkingHours) as TotalWorkingHours,
-            AVG(WorkingHours) as AvgWorkingHours
-        FROM AttendanceTable
-        WHERE EmpID = @empId 
-        AND MONTH(Date) = @month 
-        AND YEAR(Date) = @year
-    `);
-    
-    return result.recordset[0];
-};
+// Get check-in/check-out times for a specific date
+async function getCheckinCheckoutTime(EmpID, date) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Date', sql.Date, date)
+    .query('SELECT CheckIn, CheckOut FROM AttendanceTable WHERE EmpID=@EmpID AND Date=@Date');
+  return result.recordset[0];
+}
 
-exports.updateAttendance = async (empId, attendanceData) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('date', sql.Date, attendanceData.date);
-    request.input('checkInTime', sql.DateTime, attendanceData.checkInTime);
-    request.input('checkOutTime', sql.DateTime, attendanceData.checkOutTime);
-    request.input('workingHours', sql.Int, attendanceData.workingHours);
-    
-    await request.query(`
-        UPDATE AttendanceTable 
-        SET CheckInTime = @checkInTime,
-            CheckOutTime = @checkOutTime,
-            WorkingHours = @workingHours
-        WHERE EmpID = @empId AND Date = @date
-    `);
-};
+// Full check-in/out times history
+async function getCheckinCheckoutHistory(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT Date, CheckIn, CheckOut FROM AttendanceTable WHERE EmpID=@EmpID ORDER BY Date DESC');
+  return result.recordset;
+}
 
-
-exports.getAttendanceHistory = async (empId, filters = {}) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('month', sql.Int, filters.month || new Date().getMonth() + 1);
-    request.input('year', sql.Int, filters.year || new Date().getFullYear());
-    
-    const result = await request.query(`
-        SELECT Date, CheckInTime, CheckOutTime, WorkingHours, Status
-        FROM AttendanceTable
-        WHERE EmpID = @empId 
-        AND MONTH(Date) = @month 
-        AND YEAR(Date) = @year
-        ORDER BY Date DESC
-    `);
-    
-    return result.recordset;
+module.exports = {
+  markAttendance,
+  getDailyStatus,
+  getAttendanceHistory,
+  getMonthlySummary,
+  updateAttendance,
+  getCheckinCheckoutTime,
+  getCheckinCheckoutHistory
 };

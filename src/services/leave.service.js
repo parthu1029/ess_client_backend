@@ -1,168 +1,170 @@
-const { pool } = require('../config/database');
 const sql = require('mssql');
+const dbConfig = require('../config/db.config');
 
-exports.checkDateConflicts = async (empId, fromDate, toDate) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('fromDate', sql.DateTime, fromDate);
-    request.input('toDate', sql.DateTime, toDate);
-    
-    const result = await request.query(`
-        SELECT * FROM LeaveReqTable 
-        WHERE EmpID = @empId AND Status IN ('Pending', 'Approved')
-        AND ((@fromDate BETWEEN FromDate AND ToDate) OR (@toDate BETWEEN FromDate AND ToDate))
+// Submit a leave (with or without attachment, which must be buffer)
+async function applyLeave(data, attachmentBuffer = null) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), data.LeaveReqID)
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('FromDate', sql.DateTime, data.FromDate)
+    .input('ToDate', sql.DateTime, data.ToDate)
+    .input('Type', sql.VarChar(10), data.Type)
+    .input('Attachment', sql.VarBinary(sql.MAX), attachmentBuffer)
+    .input('RequestDate', sql.Date, data.RequestDate || new Date())
+    .input('Status', sql.VarChar(15), data.Status || 'Pending')
+    .input('Description', sql.VarChar(500), data.Description)
+    .query(`
+      INSERT INTO LeaveReqTable (LeaveReqID, EmpID, FromDate, ToDate, Type, Attachment, RequestDate, Status, Description)
+      VALUES (@LeaveReqID, @EmpID, @FromDate, @ToDate, @Type, @Attachment, @RequestDate, @Status, @Description)
     `);
-    
-    return result.recordset.length > 0;
-};
+  return data.LeaveReqID;
+}
 
-exports.applyLeave = async (leaveData) => {
-    const request = pool.request();
-    request.input('leaveId', sql.Int, leaveData.leaveId);
-    request.input('empId', sql.VarChar(30), leaveData.empId);
-    request.input('fromDate', sql.DateTime, leaveData.fromDate);
-    request.input('toDate', sql.DateTime, leaveData.toDate);
-    request.input('type', sql.VarChar(4), leaveData.type);
-    
-    await request.query(`
-        INSERT INTO LeaveReqTable (LeaveID, EmpID, FromDate, ToDate, Type, RequestDate, Status)
-        VALUES (@leaveId, @empId, @fromDate, @toDate, @type, GETDATE(), 'Pending')
-    `);
-};
+// All leave history for an employee
+async function getLeaveHistory(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM LeaveReqTable WHERE EmpID = @EmpID ORDER BY RequestDate DESC');
+  return res.recordset;
+}
 
-exports.getManagerId = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT ManagerEmpID FROM EmpProfileTable WHERE EmpID = @empId
-    `);
-    
-    return result.recordset[0]?.ManagerEmpID;
-};
+// Unique leave types in system (from requests)
+async function getLeaveTypes() {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .query('SELECT DISTINCT Type FROM LeaveReqTable');
+  return res.recordset.map(r => r.Type);
+}
 
-exports.getLeaveBalance = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT 
-            l.Type,
-            l.Description,
-            COALESCE(SUM(CASE WHEN lr.Status = 'Approved' THEN DATEDIFF(day, lr.FromDate, lr.ToDate) + 1 ELSE 0 END), 0) as Used,
-            (CASE 
-                WHEN l.Type = 'SL' THEN 12
-                WHEN l.Type = 'CL' THEN 12
-                WHEN l.Type = 'PL' THEN 21
-                ELSE 0
-            END) as Total
-        FROM LeaveTable l
-        LEFT JOIN LeaveReqTable lr ON l.LeaveID = lr.LeaveID AND lr.EmpID = @empId 
-            AND YEAR(lr.FromDate) = YEAR(GETDATE())
-        GROUP BY l.Type, l.Description
-    `);
-    
-    return result.recordset.map(item => ({
-        type: item.Type,
-        description: item.Description,
-        total: item.Total,
-        used: item.Used,
-        remaining: item.Total - item.Used
-    }));
-};
+// Get leave request status
+async function getLeaveStatus(LeaveReqID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
+    .query('SELECT Status FROM LeaveReqTable WHERE LeaveReqID = @LeaveReqID');
+  return res.recordset[0];
+}
 
-exports.getLeaveHistory = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT lr.LeaveReqID, lr.FromDate, lr.ToDate, lr.Type, lr.Status, lr.RequestDate, l.Description
-        FROM LeaveReqTable lr
-        JOIN LeaveTable l ON lr.LeaveID = l.LeaveID
-        WHERE lr.EmpID = @empId
-        ORDER BY lr.RequestDate DESC
-    `);
-    
-    return result.recordset;
-};
+// Cancel a leave (set status)
+async function cancelLeave(LeaveReqID) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
+    .query('UPDATE LeaveReqTable SET Status = \'Cancelled\' WHERE LeaveReqID = @LeaveReqID');
+}
 
-exports.getLeaveTypes = async () => {
-    const request = pool.request();
-    const result = await request.query(`
-        SELECT LeaveID, Type, Description
-        FROM LeaveTable
-        ORDER BY Type
-    `);
-    
-    return result.recordset;
-};
-exports.getLeaveStatus = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT 
-            lr.LeaveReqID,
-            lr.FromDate,
-            lr.ToDate,
-            lr.Type,
-            lr.Status,
-            lr.RequestDate,
-            l.Description,
-            DATEDIFF(day, lr.FromDate, lr.ToDate) + 1 as Days
-        FROM LeaveReqTable lr
-        JOIN LeaveTable l ON lr.LeaveID = l.LeaveID
-        WHERE lr.EmpID = @empId
-        ORDER BY lr.RequestDate DESC
-    `);
-    
-    return result.recordset;
-};
+// Approve or reject leave
+async function approveRejectLeave(LeaveReqID, action) {
+  const pool = await sql.connect(dbConfig);
+  const status = action === 'approve' ? 'Approved' : 'Rejected';
+  await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
+    .input('Status', sql.VarChar(15), status)
+    .query('UPDATE LeaveReqTable SET Status=@Status WHERE LeaveReqID=@LeaveReqID');
+}
 
-exports.cancelLeave = async (leaveId, empId) => {
-    const request = pool.request();
-    request.input('leaveId', sql.Int, leaveId);
-    request.input('empId', sql.VarChar(30), empId);
-    
-    // Check if leave can be cancelled (only pending leaves)
-    const checkResult = await request.query(`
-        SELECT Status FROM LeaveReqTable 
-        WHERE LeaveReqID = @leaveId AND EmpID = @empId
-    `);
-    
-    if (checkResult.recordset.length === 0) {
-        throw new Error('Leave request not found');
-    }
-    
-    if (checkResult.recordset[0].Status !== 'Pending') {
-        throw new Error('Only pending leaves can be cancelled');
-    }
-    
-    await request.query(`
-        UPDATE LeaveReqTable 
-        SET Status = 'Cancelled'
-        WHERE LeaveReqID = @leaveId AND EmpID = @empId
-    `);
-};
+// Pending leaves ("Pending" status) for employee
+async function getPendingLeaves(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM LeaveReqTable WHERE Status=\'Pending\' AND EmpID=@EmpID ORDER BY RequestDate DESC');
+  return res.recordset;
+}
 
-exports.approveRejectLeave = async (leaveId, action, remarks) => {
-    const status = action === 'approve' ? 'Approved' : 'Rejected';
-    
-    const request = pool.request();
-    request.input('leaveId', sql.Int, leaveId);
-    request.input('status', sql.VarChar(15), status);
-    request.input('remarks', sql.VarChar(500), remarks);
-    
-    // Get employee ID for notification
-    const empResult = await request.query(`
-        SELECT EmpID FROM LeaveReqTable WHERE LeaveReqID = @leaveId
+// Get leave request by ID
+async function getLeaveById(LeaveReqID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
+    .query('SELECT * FROM LeaveReqTable WHERE LeaveReqID=@LeaveReqID');
+  return res.recordset[0];
+}
+
+// Update request (only editable fields)
+async function updateLeave(LeaveReqID, updateData) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
+    .input('FromDate', sql.DateTime, updateData.FromDate)
+    .input('ToDate', sql.DateTime, updateData.ToDate)
+    .input('Type', sql.VarChar(10), updateData.Type)
+    .input('Description', sql.VarChar(500), updateData.Description)
+    .query(`
+      UPDATE LeaveReqTable
+        SET FromDate = @FromDate, ToDate = @ToDate, Type = @Type, Description = @Description
+      WHERE LeaveReqID = @LeaveReqID
     `);
-    
-    await request.query(`
-        UPDATE LeaveReqTable 
-        SET Status = @status, ManagerRemarks = @remarks
-        WHERE LeaveReqID = @leaveId
+}
+
+// All requests for an employee
+async function getLeaveRequestDetails(EmpID) {
+  return getLeaveHistory(EmpID);
+}
+
+// Edit (patch) a request (same as update)
+async function editLeaveRequest(LeaveReqID, updateData) {
+  return updateLeave(LeaveReqID, updateData);
+}
+
+// Save as draft
+async function draftSaveLeaveRequest(data, attachmentBuffer = null) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), data.LeaveReqID)
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('FromDate', sql.DateTime, data.FromDate)
+    .input('ToDate', sql.DateTime, data.ToDate)
+    .input('Type', sql.VarChar(10), data.Type)
+    .input('Attachment', sql.VarBinary(sql.MAX), attachmentBuffer)
+    .input('RequestDate', sql.Date, data.RequestDate || new Date())
+    .input('Status', sql.VarChar(15), 'Draft')
+    .input('Description', sql.VarChar(500), data.Description)
+    .query(`
+      INSERT INTO LeaveReqTable (LeaveReqID, EmpID, FromDate, ToDate, Type, Attachment, RequestDate, Status, Description)
+      VALUES (@LeaveReqID, @EmpID, @FromDate, @ToDate, @Type, @Attachment, @RequestDate, @Status, @Description)
     `);
-    
-    return { empId: empResult.recordset[0].EmpID };
+}
+
+// Pending request details by ID
+async function getPendingLeaveRequestDetails(LeaveReqID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
+    .query('SELECT * FROM LeaveReqTable WHERE LeaveReqID=@LeaveReqID');
+  return res.recordset[0];
+}
+
+// PATCH approve/reject (same as approveRejectLeave)
+async function approveRejectLeaveRequest(LeaveReqID, action) {
+  return approveRejectLeave(LeaveReqID, action);
+}
+
+// Change approval status
+async function changeLeaveRequestApproval(LeaveReqID, newStatus) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
+    .input('Status', sql.VarChar(15), newStatus)
+    .query('UPDATE LeaveReqTable SET Status=@Status WHERE LeaveReqID=@LeaveReqID');
+}
+
+module.exports = {
+  applyLeave,
+  getLeaveHistory,
+  getLeaveTypes,
+  getLeaveStatus,
+  cancelLeave,
+  approveRejectLeave,
+  getPendingLeaves,
+  getLeaveById,
+  updateLeave,
+  getLeaveRequestDetails,
+  editLeaveRequest,
+  draftSaveLeaveRequest,
+  getPendingLeaveRequestDetails,
+  approveRejectLeaveRequest,
+  changeLeaveRequestApproval
 };

@@ -1,112 +1,172 @@
-const leaveService = require('../services/leaveService');
-const notificationService = require('../services/notificationService');
+const leaveService = require('../services/leave.service');
 
+// Apply/submit a new leave request
 exports.applyLeave = async (req, res) => {
-    try {
-        const { leaveId, empId, fromDate, toDate, type } = req.body;
-        
-        // Check for conflicts
-        const hasConflict = await leaveService.checkDateConflicts(empId, fromDate, toDate);
-        if (hasConflict) {
-            return res.status(400).json({ error: 'Leave dates conflict with existing requests' });
-        }
-        
-        // Apply for leave
-        await leaveService.applyLeave({ leaveId, empId, fromDate, toDate, type });
-        
-        // Get manager and send notification
-        const managerId = await leaveService.getManagerId(empId);
-        if (managerId) {
-            await notificationService.sendNotification(
-                managerId, 
-                'New Leave Request', 
-                `Leave request from ${empId}`, 
-                'leave'
-            );
-        }
-        
-        res.json({ message: 'Leave application submitted successfully' });
-    } catch (error) {
-        console.error('Leave application error:', error);
-        res.status(500).json({ error: 'Failed to apply for leave' });
-    }
+  try {
+    const result = await leaveService.applyLeave(req.body, req.file?.buffer);
+    res.json({ message: "Leave request submitted", LeaveReqID: result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
+// Get leave balance (not in ERD; just a stub)
 exports.getLeaveBalance = async (req, res) => {
-    try {
-        const { empId } = req.params;
-        const balance = await leaveService.getLeaveBalance(empId);
-        res.json(balance);
-    } catch (error) {
-        console.error('Leave balance error:', error);
-        res.status(500).json({ error: 'Failed to fetch leave balance' });
-    }
+  // No table for balance in your ERD - return placeholder
+  res.json({ error: "Leave balance feature not present in current schema." });
 };
 
+// Get leave history for an employee
 exports.getLeaveHistory = async (req, res) => {
-    try {
-        const { empId } = req.params;
-        const history = await leaveService.getLeaveHistory(empId);
-        res.json(history);
-    } catch (error) {
-        console.error('Leave history error:', error);
-        res.status(500).json({ error: 'Failed to fetch leave history' });
-    }
+  try {
+    const history = await leaveService.getLeaveHistory(req.query.EmpID);
+    res.json(history);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
+// Get leave types from all existing requests (unique values)
 exports.getLeaveTypes = async (req, res) => {
-    try {
-        const types = await leaveService.getLeaveTypes();
-        res.json(types);
-    } catch (error) {
-        console.error('Leave types error:', error);
-        res.status(500).json({ error: 'Failed to fetch leave types' });
-    }
+  try {
+    const types = await leaveService.getLeaveTypes();
+    res.json(types);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
-
+// Get status for a specific leave request
 exports.getLeaveStatus = async (req, res) => {
-    try {
-        const { empId } = req.params;
-        const status = await leaveService.getLeaveStatus(empId);
-        res.json(status);
-    } catch (error) {
-        console.error('Leave status error:', error);
-        res.status(500).json({ error: 'Failed to fetch leave status' });
-    }
+  try {
+    const result = await leaveService.getLeaveStatus(req.query.LeaveReqID);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
+// Cancel a leave request
 exports.cancelLeave = async (req, res) => {
-    try {
-        const { leaveId } = req.params;
-        const { empId } = req.body; // From request body or token
-        
-        await leaveService.cancelLeave(leaveId, empId);
-        res.json({ message: 'Leave cancelled successfully' });
-    } catch (error) {
-        console.error('Leave cancellation error:', error);
-        res.status(500).json({ error: 'Failed to cancel leave' });
-    }
+  try {
+    await leaveService.cancelLeave(req.query.LeaveReqID);
+    res.json({ message: "Leave cancelled" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
 
+// Approve or reject leave
 exports.approveRejectLeave = async (req, res) => {
-    try {
-        const { leaveId } = req.params;
-        const { action, remarks, managerId } = req.body;
-        
-        const result = await leaveService.approveRejectLeave(leaveId, action, remarks);
-        
-        // Send notification to employee
-        await notificationService.sendNotification(
-            result.empId, 
-            'Leave Request Update', 
-            `Your leave request has been ${action}d`, 
-            'leave'
-        );
-        
-        res.json({ message: `Leave request ${action}d successfully` });
-    } catch (error) {
-        console.error('Leave approval error:', error);
-        res.status(500).json({ error: 'Failed to process leave approval' });
-    }
+  try {
+    await leaveService.approveRejectLeave(req.body.LeaveReqID, req.body.action);
+    res.json({ message: `Leave request ${req.body.action}d` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get all pending leaves for an EmpID
+exports.getPendingLeaves = async (req, res) => {
+  try {
+    const pending = await leaveService.getPendingLeaves(req.query.EmpID);
+    res.json(pending);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Get one leave by ID
+exports.getLeaveById = async (req, res) => {
+  try {
+    const leave = await leaveService.getLeaveById(req.query.LeaveReqID);
+    res.json(leave);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Update leave request
+exports.updateLeave = async (req, res) => {
+  try {
+    await leaveService.updateLeave(req.body.LeaveReqID, req.body);
+    res.json({ message: "Leave request updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Transaction log — not modeled, return []
+exports.getLeaveRequestTransactions = async (req, res) => {
+  res.json([]);
+};
+
+// Get all requests for an employee
+exports.getLeaveRequestDetails = async (req, res) => {
+  try {
+    const details = await leaveService.getLeaveRequestDetails(req.query.EmpID);
+    res.json(details);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Synonyms for submit/apply
+exports.submitLeave = exports.applyLeave;
+exports.submitLeaveOnBehalf = exports.applyLeave;
+
+// Edit a request
+exports.editLeaveRequest = async (req, res) => {
+  try {
+    await leaveService.editLeaveRequest(req.body.LeaveReqID, req.body);
+    res.json({ message: "Leave request edited" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Save as draft
+exports.draftSaveLeaveRequest = async (req, res) => {
+  try {
+    await leaveService.draftSaveLeaveRequest(req.body, req.file?.buffer);
+    res.json({ message: "Leave draft saved" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getPendingLeaveRequestDetails = async (req, res) => {
+  try {
+    const detail = await leaveService.getPendingLeaveRequestDetails(req.query.LeaveReqID);
+    res.json(detail);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// PATCH approve/reject
+exports.approveRejectLeaveRequest = async (req, res) => {
+  try {
+    await leaveService.approveRejectLeaveRequest(req.body.LeaveReqID, req.body.action);
+    res.json({ message: `Leave ${req.body.action}d` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.changeLeaveRequestApproval = async (req, res) => {
+  try {
+    await leaveService.changeLeaveRequestApproval(req.body.LeaveReqID, req.body.status);
+    res.json({ message: "Leave approval status updated" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Delegates: not in ERD, so return empty
+exports.getDelegates = async (req, res) => {
+  res.json([]);
+};
+exports.delegateLeaveApproval = async (req, res) => {
+  res.json({ error: "Delegation structure not present in current schema." });
 };

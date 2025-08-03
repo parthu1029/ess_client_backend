@@ -1,115 +1,126 @@
-const { pool } = require('../config/database');
 const sql = require('mssql');
+const dbConfig = require('../config/db.config');
 
-exports.getProfileById = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT EmpID, Name, DOB, DOJ, Position, Grade, ManagerEmpID, 
-               Phone, Address, Email, PhotoFileName, PhotoMimeType,
-               CASE WHEN PhotoContent IS NOT NULL THEN 1 ELSE 0 END as HasPhoto
-        FROM EmpProfileTable 
-        WHERE EmpID = @empId
-    `);
-    
-    return result.recordset[0] || null;
-};
+async function getProfile(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM EmpProfileTable WHERE EmpID=@EmpID');
+  return result.recordset[0];
+}
 
-exports.updateProfile = async (empId, updateData) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const updateFields = [];
-    if (updateData.phone) {
-        request.input('phone', sql.VarChar(15), updateData.phone);
-        updateFields.push('Phone = @phone');
-    }
-    if (updateData.address) {
-        request.input('address', sql.VarChar(200), updateData.address);
-        updateFields.push('Address = @address');
-    }
-    if (updateData.email) {
-        request.input('email', sql.VarChar(100), updateData.email);
-        updateFields.push('Email = @email');
-    }
-    
-    if (updateFields.length > 0) {
-        await request.query(`
-            UPDATE EmpProfileTable 
-            SET ${updateFields.join(', ')}
-            WHERE EmpID = @empId
-        `);
-    }
-};
+async function updateProfile(EmpID, profileData) {
+  // update statement for allowed profile fields
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Name', sql.VarChar(100), profileData.Name)
+    .input('DOB', sql.Date, profileData.DOB)
+    .input('Grade', sql.Int, profileData.Grade)
+    .query('UPDATE EmpProfileTable SET Name=@Name, DOB=@DOB, Grade=@Grade WHERE EmpID=@EmpID');
+}
 
-// Updated to store photo as BLOB
-exports.uploadPhoto = async (empId, photoData) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('photoContent', sql.VarBinary(sql.MAX), photoData.buffer);
-    request.input('photoFileName', sql.VarChar(200), photoData.fileName);
-    request.input('photoMimeType', sql.VarChar(100), photoData.mimeType);
-    request.input('photoSize', sql.Int, photoData.size);
-    
-    await request.query(`
-        UPDATE EmpProfileTable 
-        SET PhotoContent = @photoContent,
-            PhotoFileName = @photoFileName,
-            PhotoMimeType = @photoMimeType,
-            PhotoSize = @photoSize,
-            PhotoUploadDate = GETDATE()
-        WHERE EmpID = @empId
-    `);
-};
+async function uploadPhoto(EmpID, photo) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('photo', sql.VarBinary(sql.MAX), photo)
+    .query('UPDATE EmpProfileTable SET photo=@photo WHERE EmpID=@EmpID');
+}
 
-// Updated to return photo BLOB data
-exports.getPhoto = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT PhotoContent, PhotoFileName, PhotoMimeType, PhotoSize
-        FROM EmpProfileTable 
-        WHERE EmpID = @empId AND PhotoContent IS NOT NULL
-    `);
-    
-    return result.recordset[0] || null;
-};
+async function getPhoto(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT photo FROM EmpProfileTable WHERE EmpID=@EmpID');
+  return result.recordset[0]?.photo;
+}
 
-exports.deletePhoto = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    await request.query(`
-        UPDATE EmpProfileTable 
-        SET PhotoContent = NULL,
-            PhotoFileName = NULL,
-            PhotoMimeType = NULL,
-            PhotoSize = NULL,
-            PhotoUploadDate = NULL
-        WHERE EmpID = @empId
-    `);
-};
+async function deletePhoto(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('UPDATE EmpProfileTable SET photo=NULL WHERE EmpID=@EmpID');
+}
 
-exports.getEmploymentSummary = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT 
-            e.EmpID,
-            e.Name,
-            e.Position,
-            e.Grade,
-            e.DOJ,
-            m.Name as ManagerName,
-            e.ManagerEmpID,
-            CASE WHEN e.PhotoContent IS NOT NULL THEN 1 ELSE 0 END as HasPhoto
-        FROM EmpProfileTable e
-        LEFT JOIN EmpProfileTable m ON e.ManagerEmpID = m.EmpID
-        WHERE e.EmpID = @empId
-    `);
-    
-    return result.recordset[0];
+async function getEmploymentSummary(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT EmpID, DOJ, Position, Grade, ManagerEmpID FROM EmpProfileTable WHERE EmpID=@EmpID');
+  return result.recordset[0];
+}
+
+async function getPersonalInfo(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT EmpID, Name, DOB FROM EmpProfileTable WHERE EmpID=@EmpID');
+  return result.recordset[0];
+}
+
+async function updatePersonalInfo(EmpID, personalInfo) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Name', sql.VarChar(100), personalInfo.Name)
+    .input('DOB', sql.Date, personalInfo.DOB)
+    .query('UPDATE EmpProfileTable SET Name=@Name, DOB=@DOB WHERE EmpID=@EmpID');
+}
+
+async function getContactInfo(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT EmpID, contact, email, address FROM EmpProfileTable WHERE EmpID=@EmpID');
+  return result.recordset[0];
+}
+
+async function updateContactInfo(EmpID, contactInfo) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('contact', sql.VarChar(15), contactInfo.contact)
+    .input('email', sql.VarChar(50), contactInfo.email)
+    .input('address', sql.VarChar(100), contactInfo.address)
+    .query('UPDATE EmpProfileTable SET contact=@contact, email=@email, address=@address WHERE EmpID=@EmpID');
+}
+
+async function getProfileSummary(EmpID) {
+  // Return a mix of personal & employment info
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT EmpID, Name, DOB, DOJ, Position, Grade, ManagerEmpID FROM EmpProfileTable WHERE EmpID=@EmpID');
+  return result.recordset[0];
+}
+
+async function getCalendar(EmpID) {
+  // Sample: Collect leave, business trip, and flight ticket requests for the user
+  const pool = await sql.connect(dbConfig);
+  const leaves = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT FromDate, ToDate, Type, Status FROM LeaveReqTable WHERE EmpID=@EmpID');
+  const trips = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT StartDate, EndDate, Location, status FROM BusinessTripReqTable WHERE EmpID=@EmpID');
+  return {
+    leaves: leaves.recordset,
+    trips: trips.recordset
+  };
+}
+
+module.exports = {
+  getProfile,
+  updateProfile,
+  uploadPhoto,
+  getPhoto,
+  deletePhoto,
+  getEmploymentSummary,
+  getPersonalInfo,
+  updatePersonalInfo,
+  getContactInfo,
+  updateContactInfo,
+  getProfileSummary,
+  getCalendar
 };

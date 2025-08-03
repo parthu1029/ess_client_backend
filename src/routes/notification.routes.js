@@ -1,22 +1,19 @@
 const express = require('express');
+const notificationController = require('../controllers/notification.controller');
 const router = express.Router();
-const notificationController = require('../controllers/notificationController');
 
-// Employee notification routes
-router.get('/:empId', notificationController.getNotifications);
-router.get('/unread/:empId', notificationController.getUnreadNotifications);
-router.patch('/:notificationId/read', notificationController.markAsRead);
-router.patch('/mark-all-read/:empId', notificationController.markAllAsRead);
-router.delete('/:notificationId', notificationController.deleteNotification);
-
-// Admin/Manager notification routes
-router.post('/create', notificationController.createNotification);
-router.post('/broadcast', notificationController.broadcastNotification);
-router.get('/admin/all', notificationController.getAllNotifications);
-router.delete('/admin/:notificationId', notificationController.deleteNotificationAdmin);
-
-// Notification settings routes
-router.get('/settings/:empId', notificationController.getNotificationSettings);
-router.put('/settings/:empId', notificationController.updateNotificationSettings);
+router.get('/getNotifications', notificationController.getNotifications);
+router.get('/getUnreadNotifications', notificationController.getUnreadNotifications);
+router.put('/markAsRead', notificationController.markAsRead);
+router.put('/markAllAsRead', notificationController.markAllAsRead);
+router.delete('/deleteNotification', notificationController.deleteNotification);
+router.post('/createNotification', notificationController.createNotification);
+router.post('/broadcaseNotification', notificationController.broadcastNotification);
+router.get('/getAllNotification', notificationController.getAllNotifications);
+router.delete('/deleteNotificationAdmin', notificationController.deleteNotificationAdmin);
+router.get('/getNotificationSettings', notificationController.getNotificationSettings);
+router.put('/updateNotificationSettings', notificationController.updateNotificationSettings);
+router.get('/getNotificationById', notificationController.getNotificationById);
+router.get('/getNotificationStats', notificationController.getNotificationStats);
 
 module.exports = router;

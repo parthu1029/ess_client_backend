@@ -1,195 +1,208 @@
-const { pool } = require('../config/database');
 const sql = require('mssql');
+const dbConfig = require('../config/db.config');
 
-exports.submitReimbursement = async (reimbursementData) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), reimbursementData.empId);
-    request.input('type', sql.VarChar(50), reimbursementData.type);
-    request.input('amount', sql.Decimal(10, 2), reimbursementData.amount);
-    request.input('comment', sql.VarChar(500), reimbursementData.comment);
-    request.input('expenseDate', sql.Date, reimbursementData.expenseDate);
-    request.input('status', sql.VarChar(15), 'Pending');
-    
-    // Handle receipt attachment
-    if (reimbursementData.receiptData) {
-        request.input('receiptContent', sql.VarBinary(sql.MAX), reimbursementData.receiptData.buffer);
-        request.input('receiptFileName', sql.VarChar(200), reimbursementData.receiptData.fileName);
-        request.input('receiptMimeType', sql.VarChar(100), reimbursementData.receiptData.mimeType);
-        request.input('receiptSize', sql.Int, reimbursementData.receiptData.size);
-    } else {
-        request.input('receiptContent', sql.VarBinary(sql.MAX), null);
-        request.input('receiptFileName', sql.VarChar(200), null);
-        request.input('receiptMimeType', sql.VarChar(100), null);
-        request.input('receiptSize', sql.Int, null);
-    }
-    
-    const result = await request.query(`
-        INSERT INTO ReimbursementTable 
-        (EmpID, Type, Amount, Comment, ExpenseDate, Status, CreatedDate, 
-         ReceiptContent, ReceiptFileName, ReceiptMimeType, ReceiptSize)
-        VALUES 
-        (@empId, @type, @amount, @comment, @expenseDate, @status, GETDATE(),
-         @receiptContent, @receiptFileName, @receiptMimeType, @receiptSize);
-        SELECT SCOPE_IDENTITY() as ReimbursementID;
+// Submit a new reimbursement request (with optional attachment)
+async function submitReimbursement(data, fileBuffer = null) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), data.ReimbursementID)
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('Attachment', sql.VarBinary(sql.MAX), fileBuffer)
+    .input('Status', sql.VarChar(15), data.Status || 'Pending')
+    .input('Type', sql.VarChar(20), data.Type)
+    .input('Amount', sql.Int, data.Amount)
+    .input('Date', sql.Date, data.Date)
+    .input('Description', sql.VarChar(100), data.Description)
+    .query(`
+      INSERT INTO ReimbursementReqTable
+      (ReimbursementID, EmpID, Attachment, Status, Type, Amount, Date, Description)
+      VALUES
+      (@ReimbursementID, @EmpID, @Attachment, @Status, @Type, @Amount, @Date, @Description)
     `);
-    
-    return result.recordset[0].ReimbursementID;
-};
+}
 
-exports.getReimbursementHistory = async (empId, filters = {}) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    let query = `
-        SELECT 
-            ReimbursementID,
-            Type,
-            Amount,
-            Comment,
-            ExpenseDate,
-            Status,
-            CreatedDate,
-            ProcessedDate,
-            ManagerRemarks,
-            CASE WHEN ReceiptContent IS NOT NULL THEN 1 ELSE 0 END as HasReceipt
-        FROM ReimbursementTable
-        WHERE EmpID = @empId
-    `;
-    
-    if (filters.startDate) {
-        request.input('startDate', sql.Date, filters.startDate);
-        query += ` AND ExpenseDate >= @startDate`;
-    }
-    
-    if (filters.endDate) {
-        request.input('endDate', sql.Date, filters.endDate);
-        query += ` AND ExpenseDate <= @endDate`;
-    }
-    
-    if (filters.status) {
-        request.input('status', sql.VarChar(15), filters.status);
-        query += ` AND Status = @status`;
-    }
-    
-    query += ` ORDER BY CreatedDate DESC`;
-    
-    const result = await request.query(query);
-    return result.recordset;
-};
+// Get reimbursement history for an employee
+async function getReimbursementHistory(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM ReimbursementReqTable WHERE EmpID=@EmpID ORDER BY Date DESC');
+  return res.recordset;
+}
 
-exports.getReimbursementStatus = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT 
-            Status,
-            COUNT(*) as Count,
-            SUM(Amount) as TotalAmount
-        FROM ReimbursementTable
-        WHERE EmpID = @empId
-        AND YEAR(CreatedDate) = YEAR(GETDATE())
-        GROUP BY Status
-    `);
-    
-    return result.recordset;
-};
+// Get status for a reimbursement by ID
+async function getReimbursementStatus(ReimbursementID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), ReimbursementID)
+    .query('SELECT Status FROM ReimbursementReqTable WHERE ReimbursementID=@ReimbursementID');
+  return res.recordset[0];
+}
 
-exports.approveRejectReimbursement = async (reimbursementId, action, remarks) => {
-    const status = action === 'approve' ? 'Approved' : 'Rejected';
-    
-    const request = pool.request();
-    request.input('reimbursementId', sql.Int, reimbursementId);
-    request.input('status', sql.VarChar(15), status);
-    request.input('remarks', sql.VarChar(500), remarks);
-    
-    // Get employee ID for notification
-    const empResult = await request.query(`
-        SELECT EmpID FROM ReimbursementTable WHERE ReimbursementID = @reimbursementId
-    `);
-    
-    await request.query(`
-        UPDATE ReimbursementTable 
-        SET Status = @status, 
-            ManagerRemarks = @remarks,
-            ProcessedDate = GETDATE()
-        WHERE ReimbursementID = @reimbursementId
-    `);
-    
-    return { empId: empResult.recordset[0].EmpID };
-};
+// Approve or reject reimbursement
+async function approveRejectReimbursement(ReimbursementID, action) {
+  const pool = await sql.connect(dbConfig);
+  const status = action === 'approve' ? 'Approved' : 'Rejected';
+  await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), ReimbursementID)
+    .input('Status', sql.VarChar(15), status)
+    .query('UPDATE ReimbursementReqTable SET Status=@Status WHERE ReimbursementID=@ReimbursementID');
+}
 
-exports.getReimbursementTypes = async () => {
-    const request = pool.request();
-    
-    const result = await request.query(`
-        SELECT TypeID, TypeName, Description, MaxAmount, RequiresReceipt
-        FROM ReimbursementTypeTable
-        WHERE IsActive = 1
-        ORDER BY TypeName
-    `);
-    
-    return result.recordset;
-};
+// Unique reimbursement types
+async function getReimbursementTypes() {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .query('SELECT DISTINCT Type FROM ReimbursementReqTable');
+  return res.recordset.map(r => r.Type);
+}
 
-exports.getPendingReimbursements = async (managerId) => {
-    const request = pool.request();
-    request.input('managerId', sql.VarChar(30), managerId);
-    
-    const result = await request.query(`
-        SELECT 
-            r.ReimbursementID,
-            r.EmpID,
-            e.Name as EmployeeName,
-            r.Type,
-            r.Amount,
-            r.Comment,
-            r.ExpenseDate,
-            r.CreatedDate,
-            CASE WHEN r.ReceiptContent IS NOT NULL THEN 1 ELSE 0 END as HasReceipt
-        FROM ReimbursementTable r
-        JOIN EmpProfileTable e ON r.EmpID = e.EmpID
-        WHERE e.ManagerEmpID = @managerId 
-        AND r.Status = 'Pending'
-        ORDER BY r.CreatedDate ASC
-    `);
-    
-    return result.recordset;
-};
+// Get pending reimbursements for an employee
+async function getPendingReimbursements(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM ReimbursementReqTable WHERE Status=\'Pending\' AND EmpID=@EmpID ORDER BY Date DESC');
+  return res.recordset;
+}
 
-exports.cancelReimbursement = async (reimbursementId, empId) => {
-    const request = pool.request();
-    request.input('reimbursementId', sql.Int, reimbursementId);
-    request.input('empId', sql.VarChar(30), empId);
-    
-    // Check if reimbursement can be cancelled
-    const checkResult = await request.query(`
-        SELECT Status FROM ReimbursementTable 
-        WHERE ReimbursementID = @reimbursementId AND EmpID = @empId
-    `);
-    
-    if (checkResult.recordset.length === 0) {
-        throw new Error('Reimbursement request not found');
-    }
-    
-    if (checkResult.recordset[0].Status !== 'Pending') {
-        throw new Error('Only pending reimbursements can be cancelled');
-    }
-    
-    await request.query(`
-        UPDATE ReimbursementTable 
-        SET Status = 'Cancelled'
-        WHERE ReimbursementID = @reimbursementId AND EmpID = @empId
-    `);
-};
+// Cancel a reimbursement (set status)
+async function cancelReimbursement(ReimbursementID) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), ReimbursementID)
+    .query('UPDATE ReimbursementReqTable SET Status=\'Cancelled\' WHERE ReimbursementID=@ReimbursementID');
+}
 
-exports.getManagerId = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT ManagerEmpID FROM EmpProfileTable WHERE EmpID = @empId
+// Get reimbursement by ID
+async function getReimbursementById(ReimbursementID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), ReimbursementID)
+    .query('SELECT * FROM ReimbursementReqTable WHERE ReimbursementID=@ReimbursementID');
+  return res.recordset[0];
+}
+
+// Download attached receipt
+async function downloadReceipt(ReimbursementID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), ReimbursementID)
+    .query('SELECT Attachment FROM ReimbursementReqTable WHERE ReimbursementID=@ReimbursementID');
+  return res.recordset[0]?.Attachment || null;
+}
+
+// "Summary" - count, total, etc for one employee
+async function getReimbursementSummary(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT COUNT(*) AS TotalRequests, SUM(Amount) AS TotalAmount FROM ReimbursementReqTable WHERE EmpID=@EmpID');
+  return res.recordset[0];
+}
+
+// Transactions: same as history (no transaction log table in ERD)
+async function getReimbursementTransactions(EmpID) {
+  return getReimbursementHistory(EmpID);
+}
+
+// All requests for employee
+async function getReimbursementRequestDetails(EmpID) {
+  return getReimbursementHistory(EmpID);
+}
+
+// Submit a new request (synonym)
+async function submitReimbursementRequest(data, fileBuffer = null) {
+  return submitReimbursement(data, fileBuffer);
+}
+
+// Submit on behalf (synonym)
+async function submitReimbursementRequestOnBehalf(data, fileBuffer = null) {
+  return submitReimbursement(data, fileBuffer);
+}
+
+// Edit (patch)
+async function editReimbursementRequest(ReimbursementID, updateData) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), ReimbursementID)
+    .input('Type', sql.VarChar(20), updateData.Type)
+    .input('Amount', sql.Int, updateData.Amount)
+    .input('Date', sql.Date, updateData.Date)
+    .input('Description', sql.VarChar(100), updateData.Description)
+    .query(`
+      UPDATE ReimbursementReqTable
+      SET Type=@Type, Amount=@Amount, Date=@Date, Description=@Description
+      WHERE ReimbursementID=@ReimbursementID
     `);
-    
-    return result.recordset[0]?.ManagerEmpID;
+}
+
+// Save as draft (status = 'Draft')
+async function draftSaveReimbursementRequest(data, fileBuffer = null) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), data.ReimbursementID)
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('Attachment', sql.VarBinary(sql.MAX), fileBuffer)
+    .input('Status', sql.VarChar(15), 'Draft')
+    .input('Type', sql.VarChar(20), data.Type)
+    .input('Amount', sql.Int, data.Amount)
+    .input('Date', sql.Date, data.Date)
+    .input('Description', sql.VarChar(100), data.Description)
+    .query(`
+      INSERT INTO ReimbursementReqTable
+      (ReimbursementID, EmpID, Attachment, Status, Type, Amount, Date, Description)
+      VALUES
+      (@ReimbursementID, @EmpID, @Attachment, @Status, @Type, @Amount, @Date, @Description)
+    `);
+}
+
+// "Delegate" - not supported in ERD (no ApproverID field)
+// Skipped; can return a stub if you want
+
+// Change approval/status
+async function changeReimbursementApproval(ReimbursementID, newStatus) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ReimbursementID', sql.VarChar(30), ReimbursementID)
+    .input('Status', sql.VarChar(15), newStatus)
+    .query('UPDATE ReimbursementReqTable SET Status=@Status WHERE ReimbursementID=@ReimbursementID');
+}
+
+// Approve/reject (patch synonym)
+async function approveRejectReimbursementRequest(ReimbursementID, action) {
+  return approveRejectReimbursement(ReimbursementID, action);
+}
+
+// All pending for user
+async function getPendingReimbursementRequests(EmpID) {
+  return getPendingReimbursements(EmpID);
+}
+
+// Pending details by ID
+async function getPendingReimbursementRequestDetails(ReimbursementID) {
+  return getReimbursementById(ReimbursementID);
+}
+
+module.exports = {
+  submitReimbursement,
+  getReimbursementHistory,
+  getReimbursementStatus,
+  approveRejectReimbursement,
+  getReimbursementTypes,
+  getPendingReimbursements,
+  cancelReimbursement,
+  getReimbursementById,
+  downloadReceipt,
+  getReimbursementSummary,
+  getReimbursementTransactions,
+  getReimbursementRequestDetails,
+  submitReimbursementRequest,
+  submitReimbursementRequestOnBehalf,
+  editReimbursementRequest,
+  draftSaveReimbursementRequest,
+  changeReimbursementApproval,
+  approveRejectReimbursementRequest,
+  getPendingReimbursementRequestDetails,
+  getPendingReimbursementRequests,
 };

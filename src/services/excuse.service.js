@@ -1,195 +1,161 @@
-const { pool } = require('../config/database');
 const sql = require('mssql');
+const dbConfig = require('../config/db.config');
 
-exports.submitExcuse = async (excuseData) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), excuseData.empId);
-    request.input('type', sql.VarChar(50), excuseData.type);
-    request.input('reason', sql.VarChar(500), excuseData.reason);
-    request.input('excuseDate', sql.Date, excuseData.excuseDate);
-    request.input('duration', sql.VarChar(20), excuseData.duration); // 'Full Day', 'Half Day', 'Hours'
-    request.input('status', sql.VarChar(15), 'Pending');
-    
-    // Handle attachment
-    if (excuseData.attachmentData) {
-        request.input('attachmentContent', sql.VarBinary(sql.MAX), excuseData.attachmentData.buffer);
-        request.input('attachmentFileName', sql.VarChar(200), excuseData.attachmentData.fileName);
-        request.input('attachmentMimeType', sql.VarChar(100), excuseData.attachmentData.mimeType);
-        request.input('attachmentSize', sql.Int, excuseData.attachmentData.size);
-    } else {
-        request.input('attachmentContent', sql.VarBinary(sql.MAX), null);
-        request.input('attachmentFileName', sql.VarChar(200), null);
-        request.input('attachmentMimeType', sql.VarChar(100), null);
-        request.input('attachmentSize', sql.Int, null);
-    }
-    
-    const result = await request.query(`
-        INSERT INTO ExcuseTable 
-        (EmpID, Type, Reason, ExcuseDate, Duration, Status, SubmissionDate,
-         AttachmentContent, AttachmentFileName, AttachmentMimeType, AttachmentSize)
-        VALUES 
-        (@empId, @type, @reason, @excuseDate, @duration, @status, GETDATE(),
-         @attachmentContent, @attachmentFileName, @attachmentMimeType, @attachmentSize);
-        SELECT SCOPE_IDENTITY() as ExcuseID;
-    `);
-    
-    return result.recordset[0].ExcuseID;
-};
+// Submit new excuse with optional attachment
+async function submitExcuse(data, attachment) {
+  const pool = await sql.connect(dbConfig);
 
-exports.getExcuseHistory = async (empId, filters = {}) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    let query = `
-        SELECT 
-            ExcuseID,
-            Type,
-            Reason,
-            ExcuseDate,
-            Duration,
-            Status,
-            SubmissionDate,
-            ProcessedDate,
-            ManagerRemarks,
-            CASE WHEN AttachmentContent IS NOT NULL THEN 1 ELSE 0 END as HasAttachment
-        FROM ExcuseTable
-        WHERE EmpID = @empId
-    `;
-    
-    if (filters.startDate) {
-        request.input('startDate', sql.Date, filters.startDate);
-        query += ` AND ExcuseDate >= @startDate`;
-    }
-    
-    if (filters.endDate) {
-        request.input('endDate', sql.Date, filters.endDate);
-        query += ` AND ExcuseDate <= @endDate`;
-    }
-    
-    if (filters.status) {
-        request.input('status', sql.VarChar(15), filters.status);
-        query += ` AND Status = @status`;
-    }
-    
-    query += ` ORDER BY SubmissionDate DESC`;
-    
-    const result = await request.query(query);
-    return result.recordset;
-};
+  await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), data.ExcuseReqID)
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('From', sql.DATE, data.From)
+    .input('To', sql.DATE, data.To)
+    .input('Attachment', sql.BLOB, attachment ? attachment : null) // If uploading as blob
+    .input('ReqSubmittedDate', sql.DATE, data.ReqSubmittedDate || new Date())
+    .input('Status', sql.VarChar(15), data.Status || 'Pending')
+    .input('Date', sql.DATE, data.Date)
+    .input('Reason', sql.VarChar(100), data.Reason)
+    .query(`
+      INSERT INTO ExcuseReqTable
+      (ExcuseReqID, EmpID, [From], [To], Attachment, ReqSubmittedDate, Status, Date, Reason)
+      VALUES 
+      (@ExcuseReqID, @EmpID, @From, @To, @Attachment, @ReqSubmittedDate, @Status, @Date, @Reason)
+    `);
+}
 
-exports.getExcuseStatus = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT 
-            Status,
-            COUNT(*) as Count,
-            Type,
-            COUNT(CASE WHEN Type = 'Late Arrival' THEN 1 END) as LateCount,
-            COUNT(CASE WHEN Type = 'Early Leave' THEN 1 END) as EarlyLeaveCount,
-            COUNT(CASE WHEN Type = 'Absence' THEN 1 END) as AbsenceCount
-        FROM ExcuseTable
-        WHERE EmpID = @empId
-        AND YEAR(ExcuseDate) = YEAR(GETDATE())
-        GROUP BY Status, Type
-    `);
-    
-    return result.recordset;
-};
+// Get excuse history for an employee
+async function getExcuseHistory(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM ExcuseReqTable WHERE EmpID = @EmpID ORDER BY ReqSubmittedDate DESC');
+  return res.recordset;
+}
 
-exports.approveRejectExcuse = async (excuseId, action, remarks) => {
-    const status = action === 'approve' ? 'Approved' : 'Rejected';
-    
-    const request = pool.request();
-    request.input('excuseId', sql.Int, excuseId);
-    request.input('status', sql.VarChar(15), status);
-    request.input('remarks', sql.VarChar(500), remarks);
-    
-    // Get employee ID for notification
-    const empResult = await request.query(`
-        SELECT EmpID FROM ExcuseTable WHERE ExcuseID = @excuseId
-    `);
-    
-    await request.query(`
-        UPDATE ExcuseTable 
-        SET Status = @status, 
-            ManagerRemarks = @remarks,
-            ProcessedDate = GETDATE()
-        WHERE ExcuseID = @excuseId
-    `);
-    
-    return { empId: empResult.recordset[0].EmpID };
-};
+// Get status of a specific excuse (by ExcuseReqID)
+async function getExcuseStatusById(ExcuseReqID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
+    .query('SELECT Status FROM ExcuseReqTable WHERE ExcuseReqID = @ExcuseReqID');
+  return res.recordset[0];
+}
 
-exports.getPendingExcuses = async (managerId) => {
-    const request = pool.request();
-    request.input('managerId', sql.VarChar(30), managerId);
-    
-    const result = await request.query(`
-        SELECT 
-            ex.ExcuseID,
-            ex.EmpID,
-            e.Name as EmployeeName,
-            ex.Type,
-            ex.Reason,
-            ex.ExcuseDate,
-            ex.Duration,
-            ex.SubmissionDate,
-            CASE WHEN ex.AttachmentContent IS NOT NULL THEN 1 ELSE 0 END as HasAttachment
-        FROM ExcuseTable ex
-        JOIN EmpProfileTable e ON ex.EmpID = e.EmpID
-        WHERE e.ManagerEmpID = @managerId 
-        AND ex.Status = 'Pending'
-        ORDER BY ex.SubmissionDate ASC
-    `);
-    
-    return result.recordset;
-};
+// Get grouped status summary for employee
+async function getExcuseStatusForEmp(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT Status, COUNT(*) as Count FROM ExcuseReqTable WHERE EmpID=@EmpID GROUP BY Status');
+  return res.recordset;
+}
 
-exports.cancelExcuse = async (excuseId, empId) => {
-    const request = pool.request();
-    request.input('excuseId', sql.Int, excuseId);
-    request.input('empId', sql.VarChar(30), empId);
-    
-    // Check if excuse can be cancelled
-    const checkResult = await request.query(`
-        SELECT Status FROM ExcuseTable 
-        WHERE ExcuseID = @excuseId AND EmpID = @empId
-    `);
-    
-    if (checkResult.recordset.length === 0) {
-        throw new Error('Excuse request not found');
-    }
-    
-    if (checkResult.recordset[0].Status !== 'Pending') {
-        throw new Error('Only pending excuses can be cancelled');
-    }
-    
-    await request.query(`
-        UPDATE ExcuseTable 
-        SET Status = 'Cancelled'
-        WHERE ExcuseID = @excuseId AND EmpID = @empId
-    `);
-};
+// Approve or reject an excuse
+async function approveRejectExcuse(ExcuseReqID, action, comments) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
+    .input('Status', sql.VarChar(15), action === 'approve' ? 'Approved' : 'Rejected')
+    .query(`UPDATE ExcuseReqTable SET Status=@Status WHERE ExcuseReqID=@ExcuseReqID`);
+}
 
-exports.getExcuseTypes = async () => {
-    return [
-        { id: 1, type: 'Late Arrival', description: 'Excuse for coming late to office' },
-        { id: 2, type: 'Early Leave', description: 'Excuse for leaving office early' },
-        { id: 3, type: 'Absence', description: 'Excuse for being absent from work' },
-        { id: 4, type: 'Extended Break', description: 'Excuse for taking extended lunch/break' },
-        { id: 5, type: 'Personal Emergency', description: 'Personal emergency during work hours' }
-    ];
-};
+// Get all pending excuses for approval by status (Pending)
+async function getPendingExcuses(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query(`SELECT * FROM ExcuseReqTable WHERE Status='Pending' AND EmpID=@EmpID ORDER BY ReqSubmittedDate DESC`);
+  return res.recordset;
+}
 
-exports.getManagerId = async (empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    
-    const result = await request.query(`
-        SELECT ManagerEmpID FROM EmpProfileTable WHERE EmpID = @empId
+// Cancel excuse by setting status to 'Cancelled'
+async function cancelExcuse(ExcuseReqID) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
+    .query(`UPDATE ExcuseReqTable SET Status='Cancelled' WHERE ExcuseReqID=@ExcuseReqID`);
+}
+
+// Get excuse by ID (metadata & attachment)
+async function getExcuseById(ExcuseReqID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
+    .query('SELECT * FROM ExcuseReqTable WHERE ExcuseReqID = @ExcuseReqID');
+  return res.recordset[0];
+}
+
+// Download attachment for an excuse (BLOB)
+async function downloadExcuseAttachment(ExcuseReqID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
+    .query('SELECT Attachment FROM ExcuseReqTable WHERE ExcuseReqID = @ExcuseReqID');
+  return res.recordset[0];
+}
+
+// Edit (patch) excuse request
+async function editExcuseRequest(ExcuseReqID, updateData) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
+    .input('From', sql.DATE, updateData.From)
+    .input('To', sql.DATE, updateData.To)
+    .input('Reason', sql.VarChar(100), updateData.Reason)
+    .query(`UPDATE ExcuseReqTable SET [From]=@From, [To]=@To, Reason=@Reason WHERE ExcuseReqID=@ExcuseReqID`);
+}
+
+// Save as draft
+async function draftSaveExcuseRequest(data) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), data.ExcuseReqID)
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('From', sql.DATE, data.From)
+    .input('To', sql.DATE, data.To)
+    .input('Attachment', sql.BLOB, data.Attachment || null)
+    .input('ReqSubmittedDate', sql.DATE, data.ReqSubmittedDate || new Date())
+    .input('Status', sql.VarChar(15), 'Draft')
+    .input('Date', sql.DATE, data.Date)
+    .input('Reason', sql.VarChar(100), data.Reason)
+    .query(`
+      INSERT INTO ExcuseReqTable
+      (ExcuseReqID, EmpID, [From], [To], Attachment, ReqSubmittedDate, Status, Date, Reason)
+      VALUES 
+      (@ExcuseReqID, @EmpID, @From, @To, @Attachment, @ReqSubmittedDate, @Status, @Date, @Reason)
     `);
-    
-    return result.recordset[0]?.ManagerEmpID;
+}
+
+// Get all pending excuse requests for an employee
+async function getPendingExcuseRequests(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM ExcuseReqTable WHERE Status = \'Pending\' AND EmpID = @EmpID ORDER BY ReqSubmittedDate DESC');
+  return res.recordset;
+}
+
+// Get details for a pending excuse request
+async function getPendingExcuseRequestDetails(ExcuseReqID) {
+  const pool = await sql.connect(dbConfig);
+  const res = await pool.request()
+    .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
+    .query('SELECT * FROM ExcuseReqTable WHERE ExcuseReqID=@ExcuseReqID');
+  return res.recordset[0];
+}
+
+module.exports = {
+  submitExcuse,
+  getExcuseHistory,
+  getExcuseStatusById,
+  getExcuseStatusForEmp,
+  approveRejectExcuse,
+  getPendingExcuses,
+  cancelExcuse,
+  getExcuseById,
+  downloadExcuseAttachment,
+  editExcuseRequest,
+  draftSaveExcuseRequest,
+  getPendingExcuseRequests,
+  getPendingExcuseRequestDetails,
 };

@@ -1,239 +1,167 @@
-const { pool } = require('../config/database');
 const sql = require('mssql');
-const notificationService = require('./notificationService');
+const dbConfig = require('../config/db.config');
 
-exports.getTeam = async (managerId) => {
-    const request = pool.request();
-    request.input('managerId', sql.VarChar(30), managerId);
-    
-    const result = await request.query(`
-        SELECT 
-            EmpID, 
-            Name, 
-            Position, 
-            Grade, 
-            DOJ,
-            Email,
-            Phone
-        FROM EmpProfileTable
-        WHERE ManagerEmpID = @managerId
-        ORDER BY Name
-    `);
-    
-    return result.recordset;
-};
+// Get all direct reports (team) for a manager
+async function getTeam(ManagerEmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('ManagerEmpID', sql.VarChar(30), ManagerEmpID)
+    .query('SELECT * FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID');
+  return result.recordset;
+}
 
-exports.getTeamMemberDetails = async (managerId, empId) => {
-    const request = pool.request();
-    request.input('empId', sql.VarChar(30), empId);
-    request.input('managerId', sql.VarChar(30), managerId);
-    
-    const result = await request.query(`
-        SELECT EmpID, Name, DOB, DOJ, Position, Grade
-        FROM EmpProfileTable
-        WHERE EmpID = @empId AND ManagerEmpID = @managerId
-    `);
-    
-    return result.recordset[0] || null;
-};
-
-exports.getPendingApprovals = async (managerId) => {
-    const request = pool.request();
-    request.input('managerId', sql.VarChar(30), managerId);
-    
-    // Get pending leave requests
-    const leaveResult = await request.query(`
-        SELECT 
-            lr.LeaveReqID,
-            lr.EmpID,
-            ep.Name as EmployeeName,
-            lr.FromDate,
-            lr.ToDate,
-            lr.Type,
-            lr.RequestDate,
-            'leave' as ApprovalType,
-            DATEDIFF(day, lr.FromDate, lr.ToDate) + 1 as Days
-        FROM LeaveReqTable lr
-        JOIN EmpProfileTable ep ON lr.EmpID = ep.EmpID
-        WHERE ep.ManagerEmpID = @managerId AND lr.Status = 'Pending'
-    `);
-    
-    // Get pending reimbursement requests
-    const reimbResult = await request.query(`
-        SELECT 
-            r.ReimbursementID,
-            r.EmpID,
-            ep.Name as EmployeeName,
-            r.Type,
-            r.Amount,
-            r.Comment,
-            r.CreatedDate,
-            'reimbursement' as ApprovalType
-        FROM ReimbursementTable r
-        JOIN EmpProfileTable ep ON r.EmpID = ep.EmpID
-        WHERE ep.ManagerEmpID = @managerId AND r.Status = 'Pending'
-    `);
-    
-    return {
-        leaves: leaveResult.recordset,
-        reimbursements: reimbResult.recordset
-    };
-};
-
-exports.bulkApprove = async (type, ids, action, managerId) => {
-    const status = action === 'approve' ? 'Approved' : 'Rejected';
-    
-    if (type === 'leave') {
-        await this.bulkApproveLeaves(ids, status);
-    } else if (type === 'reimbursement') {
-        await this.bulkApproveReimbursements(ids, status);
+// Bulk-approve requests for a list of EmpIDs (leaves/excuses)
+async function bulkApprove({ EmpIDs, type, action }) {
+  const pool = await sql.connect(dbConfig);
+  
+  if (type === 'leave') {
+    for (const empId of EmpIDs) {
+      await pool.request()
+        .input('EmpID', sql.VarChar(30), empId)
+        .input('Status', sql.VarChar(15), action === 'approve' ? 'Approved' : 'Rejected')
+        .query(`UPDATE LeaveReqTable SET Status=@Status WHERE EmpID=@EmpID AND Status='Pending'`);
     }
-    
-    // Send notifications to affected employees
-    await this.sendBulkNotifications(type, ids, status);
-};
-
-exports.bulkApproveLeaves = async (leaveIds, status) => {
-    const request = pool.request();
-    request.input('status', sql.VarChar(15), status);
-    
-    const idParams = leaveIds.map((id, index) => {
-        const paramName = `id${index}`;
-        request.input(paramName, sql.Int, id);
-        return `@${paramName}`;
-    });
-    
-    await request.query(`
-        UPDATE LeaveReqTable
-        SET Status = @status
-        WHERE LeaveReqID IN (${idParams.join(',')})
-    `);
-};
-
-exports.bulkApproveReimbursements = async (reimbIds, status) => {
-    const request = pool.request();
-    request.input('status', sql.VarChar(15), status);
-    
-    const idParams = reimbIds.map((id, index) => {
-        const paramName = `id${index}`;
-        request.input(paramName, sql.Int, id);
-        return `@${paramName}`;
-    });
-    
-    await request.query(`
-        UPDATE ReimbursementTable
-        SET Status = @status
-        WHERE ReimbursementID IN (${idParams.join(',')})
-    `);
-};
-
-exports.sendBulkNotifications = async (type, ids, status) => {
-    const request = pool.request();
-    
-    let query, tableName, idColumn;
-    if (type === 'leave') {
-        tableName = 'LeaveReqTable';
-        idColumn = 'LeaveReqID';
-    } else if (type === 'reimbursement') {
-        tableName = 'ReimbursementTable';
-        idColumn = 'ReimbursementID';
+  } else if (type === 'excuse') {
+    for (const empId of EmpIDs) {
+      await pool.request()
+        .input('EmpID', sql.VarChar(30), empId)
+        .input('Status', sql.VarChar(15), action === 'approve' ? 'Approved' : 'Rejected')
+        .query(`UPDATE ExcuseReqTable SET Status=@Status WHERE EmpID=@EmpID AND Status='Pending'`);
     }
-    
-    const idParams = ids.map((id, index) => {
-        const paramName = `id${index}`;
-        request.input(paramName, sql.Int, id);
-        return `@${paramName}`;
+  }
+  return { updated: EmpIDs.length };
+}
+
+// Get all approvals pending for this manager's direct reports
+async function getPendingApprovals(ManagerEmpID) {
+  const pool = await sql.connect(dbConfig);
+
+  // Get the manager's team
+  const teamResult = await pool.request()
+    .input('ManagerEmpID', sql.VarChar(30), ManagerEmpID)
+    .query('SELECT EmpID FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID');
+  const empIds = teamResult.recordset.map(e => e.EmpID);
+
+  // Pending leaves
+  const leaveRequests = empIds.length > 0 ? (
+    await pool.request()
+      .query(`SELECT * FROM LeaveReqTable WHERE Status='Pending' AND EmpID IN ('${empIds.join("','")}')`)
+  ).recordset : [];
+
+  // Pending excuses
+  const excuseRequests = empIds.length > 0 ? (
+    await pool.request()
+      .query(`SELECT * FROM ExcuseReqTable WHERE Status='Pending' AND EmpID IN ('${empIds.join("','")}')`)
+  ).recordset : [];
+
+  return { leaveRequests, excuseRequests };
+}
+
+// Get profile of a team member
+async function getTeamMemberDetails(EmpID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT * FROM EmpProfileTable WHERE EmpID=@EmpID');
+  return result.recordset[0];
+}
+
+// Simple dashboard: return team count & pending requests
+async function getManagerDashboard(ManagerEmpID) {
+  const pool = await sql.connect(dbConfig);
+  // Team count
+  const teamResult = await pool.request()
+    .input('ManagerEmpID', sql.VarChar(30), ManagerEmpID)
+    .query('SELECT COUNT(*) as TeamSize FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID');
+  // Pending requests
+  const pendingLeave = await pool.request()
+    .input('ManagerEmpID', sql.VarChar(30), ManagerEmpID)
+    .query(`SELECT COUNT(*) as PendingLeaves FROM LeaveReqTable l 
+            JOIN EmpProfileTable e ON l.EmpID = e.EmpID 
+            WHERE l.Status = 'Pending' AND e.ManagerEmpID=@ManagerEmpID`);
+  return {
+    teamSize: teamResult.recordset[0]?.TeamSize || 0,
+    pendingLeaves: pendingLeave.recordset[0]?.PendingLeaves || 0,
+  };
+}
+
+// Attendance summary for all team members (number of leaves, excuses per month)
+async function getTeamAttendanceSummary(ManagerEmpID, month, year) {
+  const pool = await sql.connect(dbConfig);
+  // Find team members
+  const team = await pool.request()
+    .input('ManagerEmpID', sql.VarChar(30), ManagerEmpID)
+    .query('SELECT EmpID, Name FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID');
+  const summary = [];
+  for (const member of team.recordset) {
+    const leaves = await pool.request()
+      .input('EmpID', sql.VarChar(30), member.EmpID)
+      .input('Month', sql.Int, month)
+      .input('Year', sql.Int, year)
+      .query(`SELECT COUNT(*) as LeaveCount FROM LeaveReqTable 
+               WHERE EmpID=@EmpID AND MONTH(FromDate)=@Month AND YEAR(FromDate)=@Year`);
+    const excuses = await pool.request()
+      .input('EmpID', sql.VarChar(30), member.EmpID)
+      .input('Month', sql.Int, month)
+      .input('Year', sql.Int, year)
+      .query(`SELECT COUNT(*) as ExcuseCount FROM ExcuseReqTable 
+               WHERE EmpID=@EmpID AND MONTH(Date)=@Month AND YEAR(Date)=@Year`);
+    summary.push({
+      EmpID: member.EmpID,
+      Name: member.Name,
+      LeaveCount: leaves.recordset[0]?.LeaveCount || 0,
+      ExcuseCount: excuses.recordset[0]?.ExcuseCount || 0,
     });
-    
-    const result = await request.query(`
-        SELECT DISTINCT EmpID FROM ${tableName}
-        WHERE ${idColumn} IN (${idParams.join(',')})
-    `);
-    
-    for (const emp of result.recordset) {
-        await notificationService.sendNotification(
-            emp.EmpID,
-            `${type.charAt(0).toUpperCase() + type.slice(1)} Request Update`,
-            `Your ${type} request has been ${status.toLowerCase()}`,
-            type
-        );
-    }
-};
+  }
+  return summary;
+}
 
-exports.getTeamAttendanceSummary = async (managerId, filters = {}) => {
-    const request = pool.request();
-    request.input('managerId', sql.VarChar(30), managerId);
-    request.input('month', sql.Int, filters.month || new Date().getMonth() + 1);
-    request.input('year', sql.Int, filters.year || new Date().getFullYear());
-    
-    const result = await request.query(`
-        SELECT 
-            ep.EmpID,
-            ep.Name,
-            COUNT(at.Date) as WorkingDays,
-            SUM(at.WorkingHours) as TotalHours,
-            AVG(at.WorkingHours) as AvgHours,
-            COUNT(CASE WHEN DATEPART(HOUR, at.CheckInTime) > 9 THEN 1 END) as LateDays
-        FROM EmpProfileTable ep
-        LEFT JOIN AttendanceTable at ON ep.EmpID = at.EmpID 
-            AND MONTH(at.Date) = @month 
-            AND YEAR(at.Date) = @year
-        WHERE ep.ManagerEmpID = @managerId
-        GROUP BY ep.EmpID, ep.Name
-        ORDER BY ep.Name
-    `);
-    
-    return result.recordset;
-};
+// Search team members by name/email
+async function searchTeamMembers(ManagerEmpID, search) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('ManagerEmpID', sql.VarChar(30), ManagerEmpID)
+    .input('search', sql.VarChar(100), `%${search}%`)
+    .query(`SELECT * FROM EmpProfileTable 
+              WHERE ManagerEmpID=@ManagerEmpID 
+              AND (Name LIKE @search OR email LIKE @search)`);
+  return result.recordset;
+}
 
-exports.searchTeamMembers = async (managerId, searchQuery) => {
-    const request = pool.request();
-    request.input('managerId', sql.VarChar(30), managerId);
-    request.input('searchQuery', sql.VarChar(100), `%${searchQuery}%`);
-    
-    const result = await request.query(`
-        SELECT EmpID, Name, Position, Grade
-        FROM EmpProfileTable
-        WHERE ManagerEmpID = @managerId 
-        AND (Name LIKE @searchQuery OR EmpID LIKE @searchQuery OR Position LIKE @searchQuery)
-        ORDER BY Name
-    `);
-    
-    return result.recordset;
-};
+// Assign a task (not in ERD, but can be stubbed)
+async function assignTask(ToEmpID, data) {
+  // No TaskTable in ERD. You can log/return a stub.
+  return { message: `Task assignment is not implemented in the current schema.` };
+}
 
-exports.getManagerDashboard = async (managerId) => {
-    const request = pool.request();
-    request.input('managerId', sql.VarChar(30), managerId);
-    
-    const [teamSize, pendingLeaves, pendingReimb, teamOnLeave] = await Promise.all([
-        request.query(`SELECT COUNT(*) as TeamSize FROM EmpProfileTable WHERE ManagerEmpID = @managerId`),
-        request.query(`
-            SELECT COUNT(*) as PendingLeaves
-            FROM LeaveReqTable lr
-            JOIN EmpProfileTable ep ON lr.EmpID = ep.EmpID
-            WHERE ep.ManagerEmpID = @managerId AND lr.Status = 'Pending'
-        `),
-        request.query(`
-            SELECT COUNT(*) as PendingReimbursements
-            FROM ReimbursementTable r
-            JOIN EmpProfileTable ep ON r.EmpID = ep.EmpID
-            WHERE ep.ManagerEmpID = @managerId AND r.Status = 'Pending'
-        `),
-        request.query(`
-            SELECT COUNT(*) as TeamOnLeave
-            FROM LeaveReqTable lr
-            JOIN EmpProfileTable ep ON lr.EmpID = ep.EmpID
-            WHERE ep.ManagerEmpID = @managerId 
-            AND lr.Status = 'Approved' 
-            AND GETDATE() BETWEEN lr.FromDate AND lr.ToDate
-        `)
-    ]);
-    
-    return {
-        teamSize: teamSize.recordset[0].TeamSize,
-        pendingLeaveApprovals: pendingLeaves.recordset[0].PendingLeaves,
-        pendingReimbursementApprovals: pendingReimb.recordset[0].PendingReimbursements,
-        teamOnLeaveToday: teamOnLeave.recordset[0].TeamOnLeave
-    };
+// Update a team member's profile (only allowed fields)
+async function updateTeamMember(EmpID, data) {
+  const pool = await sql.connect(dbConfig);
+  await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('Name', sql.VarChar(100), data.Name)
+    .input('contact', sql.VarChar(15), data.contact)
+    .input('email', sql.VarChar(50), data.email)
+    .input('address', sql.VarChar(100), data.address)
+    .query('UPDATE EmpProfileTable SET Name=@Name, contact=@contact, email=@email, address=@address WHERE EmpID=@EmpID');
+  return { message: "Team member profile updated." };
+}
+
+// "Performance" - not in ERD, just stub return
+async function getTeamPerformance(ManagerEmpID) {
+  // Stub: you may use number of leaves, tenure, etc. as makes sense
+  return { error: "Team performance analytics not implemented in ER diagram." };
+}
+
+module.exports = {
+  getTeam,
+  bulkApprove,
+  getPendingApprovals,
+  getTeamMemberDetails,
+  getManagerDashboard,
+  getTeamAttendanceSummary,
+  searchTeamMembers,
+  assignTask,
+  updateTeamMember,
+  getTeamPerformance,
 };

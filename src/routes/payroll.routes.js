@@ -1,9 +1,16 @@
 const express = require('express');
+const payrollController = require('../controllers/payroll.controller');
 const router = express.Router();
-const payrollController = require('../controllers/payrollController');
 
-router.get('/payslip/:empId', payrollController.getPayslip);
-router.get('/history/:empId', payrollController.getPayslipHistory);
-router.put('/bank-details/:empId', payrollController.updateBankDetails);
+router.get('/payslip', payrollController.getPayslip);
+router.get('/getPayslipHistory', payrollController.getPayslipHistory);
+router.put('/updateBankDetails', payrollController.updateBankDetails);
+router.get('/payslipDownload', payrollController.downloadPayslip);
+router.get('/getSalaryBreakdown', payrollController.getSalaryBreakdown);
+router.get('/getTaxDocuments', payrollController.getTaxDocuments);
+router.get('/getPayrollSummary', payrollController.getPayrollSummary);
+router.get('/getBankDetails', payrollController.getBankDetails);
+router.post('/generatePayrollReport', payrollController.generatePayrollReport);
+router.put('/updateSalaryStructure', payrollController.updateSalaryStructure);
 
 module.exports = router;

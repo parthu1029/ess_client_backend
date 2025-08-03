@@ -1,15 +1,16 @@
 const express = require('express');
+const managerController = require('../controllers/manager.controller');
 const router = express.Router();
-const managerController = require('../controllers/managerController');
-const adminController = require('../controllers/adminController');
 
-// Manager routes
-router.get('/team/:managerId', managerController.getTeam);
-router.put('/approve', managerController.bulkApprove);
-router.get('/pending/:managerId', managerController.getPendingApprovals);
-
-// Admin routes
-router.post('/add-employee', adminController.addEmployee);
-router.put('/status/:empId', adminController.toggleUserStatus);
+router.get('/getTeam', managerController.getTeam);
+router.post('/bulk-approve', managerController.bulkApprove);
+router.get('/getPendingApprovals', managerController.getPendingApprovals);
+router.get('/getTeamMemberDetails', managerController.getTeamMemberDetails);
+router.get('/getManagerDashboard', managerController.getManagerDashboard);
+router.get('/getTeamAttendanceSummary', managerController.getTeamAttendanceSummary);
+router.get('/searchTeamMembers', managerController.searchTeamMembers);
+router.post('/assignTask', managerController.assignTask);
+router.put('/updateTeamMember', managerController.updateTeamMember);
+router.get('/getTeamPerformance', managerController.getTeamPerformance);
 
 module.exports = router;
