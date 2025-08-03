@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const businessTripController = require('../controllers/bussinessTrip.controller');
+const businessTripController = require('../controllers/businessTrip.controller');
 
 router.get('/getBusinessTripRequestDetails',businessTripController.getBusinessTripRequestDetails)
 router.get('/getBusinessTripTransactions',businessTripController.getBusinessTripTransactions)
