@@ -3,19 +3,20 @@ const businessTripService = require('../services/businessTrip.service');
 // Get all business trip request details for a user
 exports.getBusinessTripRequestDetails = async (req, res) => {
   try {
-    const { EmpID } = req.query;
-    const result = await businessTripService.getBusinessTripRequestDetails(EmpID);
+    const ReqID = req.headers['reqid'];
+    const result = await businessTripService.getBusinessTripRequestDetails(ReqID);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// View business trip transactions (history/list)
+// View business trip transactions
 exports.getBusinessTripTransactions = async (req, res) => {
   try {
-    const { EmpID } = req.query;
-    const result = await businessTripService.getBusinessTripTransactions(EmpID);
+    const EmpID = req.cookies.EmpID;
+    const CompanyID = req.cookies.context.CompanyID;
+    const result = await businessTripService.getBusinessTripTransactions(EmpID, CompanyID);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -25,8 +26,17 @@ exports.getBusinessTripTransactions = async (req, res) => {
 // User submits a new business trip request
 exports.submitBusinessTripRequest = async (req, res) => {
   try {
-    const data = req.body; // Should include EmpID, dates, purpose, etc.
-    await businessTripService.submitBusinessTripRequest(data);
+    const data = req.body;
+    const file = req.file;
+    await businessTripService.submitBusinessTripRequest(
+      data,
+      file?.buffer,
+      file?.originalname,
+      file?.mimetype,
+      file?.size,
+      req.cookies.EmpID,
+      req.cookies.context.CompanyID
+    );
     res.json({ message: 'Business trip request submitted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -37,7 +47,18 @@ exports.submitBusinessTripRequest = async (req, res) => {
 exports.submitBusinessTripRequestOnBehalf = async (req, res) => {
   try {
     const data = req.body;
-    await businessTripService.submitBusinessTripRequestOnBehalf(data);
+    const file = req.file;
+    const actorEmpID = req.body.EmpID;
+    const CompanyID = req.cookies.context.CompanyID;
+    await businessTripService.submitBusinessTripRequestOnBehalf(
+      data,
+      file?.buffer,
+      file?.originalname,
+      file?.mimetype,
+      file?.size,
+      actorEmpID,
+      CompanyID
+    );
     res.json({ message: 'Business trip request submitted on behalf' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -59,19 +80,36 @@ exports.editBusinessTripRequest = async (req, res) => {
 exports.draftSaveBusinessTripRequest = async (req, res) => {
   try {
     const data = req.body;
-    await businessTripService.draftSaveBusinessTripRequest(data);
+    const file = req.file;
+    await businessTripService.draftSaveBusinessTripRequest(
+      data,
+      file?.buffer,
+      file?.originalname,
+      file?.mimetype,
+      file?.size,
+      req.cookies.EmpID,
+      req.cookies.context.CompanyID
+    );
     res.json({ message: 'Business trip request draft saved' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
-// Delegate approval to another manager/approver
-exports.delegateBusinessTripApproval = async (req, res) => {
+// Delegate a business trip request to another approver
+exports.delegateBusinessTripRequest = async (req, res) => {
   try {
-    const { tripId, newApproverEmpID } = req.body;
-    await businessTripService.delegateBusinessTripApproval(tripId, newApproverEmpID);
-    res.json({ message: 'Business trip approval delegated' });
+    const { reqID, newApproverEmpID, comments } = req.body;
+    const actorEmpID = req.cookies.EmpID;
+    const CompanyID = req.cookies.context.CompanyID;
+    await businessTripService.delegateBusinessTripRequest(
+      reqID,
+      newApproverEmpID,
+      actorEmpID,
+      comments,
+      CompanyID
+    );
+    res.json({ message: 'Business trip request delegated' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -80,8 +118,8 @@ exports.delegateBusinessTripApproval = async (req, res) => {
 // Change approval status/state (patch)
 exports.changeBusinessTripApproval = async (req, res) => {
   try {
-    const { tripId, approvalStatus } = req.body;
-    await businessTripService.changeBusinessTripApproval(tripId, approvalStatus);
+    const {tripId} = req.body;
+    await businessTripService.changeBusinessTripApproval(tripId);
     res.json({ message: 'Business trip approval status changed' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -91,7 +129,7 @@ exports.changeBusinessTripApproval = async (req, res) => {
 // Approve or reject a business trip request
 exports.approveRejectBusinessTripRequest = async (req, res) => {
   try {
-    const { tripId, action, comments } = req.body; // action='approve'/'reject'
+    const { tripId, action, comments } = req.body;
     await businessTripService.approveRejectBusinessTripRequest(tripId, action, comments);
     res.json({ message: `Business trip has been ${action}ed.` });
   } catch (err) {
@@ -102,8 +140,7 @@ exports.approveRejectBusinessTripRequest = async (req, res) => {
 // Get all pending business trip requests for approver
 exports.getPendingBusinessTripRequests = async (req, res) => {
   try {
-    const { ApproverEmpID } = req.query;
-    const result = await businessTripService.getPendingBusinessTripRequests(ApproverEmpID);
+    const result = await businessTripService.getPendingBusinessTripRequests(req.cookies.EmpID, req.cookies.context.CompanyID);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -113,7 +150,7 @@ exports.getPendingBusinessTripRequests = async (req, res) => {
 // Get pending request details (single request)
 exports.getPendingBusinessTripRequestDetails = async (req, res) => {
   try {
-    const { tripId } = req.query;
+    const tripId = req.headers['tripid'];
     const result = await businessTripService.getPendingBusinessTripRequestDetails(tripId);
     res.json(result);
   } catch (err) {

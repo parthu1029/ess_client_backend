@@ -19,7 +19,7 @@ exports.getLeaveBalance = async (req, res) => {
 // Get leave history for an employee
 exports.getLeaveHistory = async (req, res) => {
   try {
-    const history = await leaveService.getLeaveHistory(req.query.EmpID);
+    const history = await leaveService.getLeaveHistory(req.cookies.EmpID);
     res.json(history);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -39,7 +39,7 @@ exports.getLeaveTypes = async (req, res) => {
 // Get status for a specific leave request
 exports.getLeaveStatus = async (req, res) => {
   try {
-    const result = await leaveService.getLeaveStatus(req.query.LeaveReqID);
+    const result = await leaveService.getLeaveStatus(req.headers['leavereqid']);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -49,7 +49,7 @@ exports.getLeaveStatus = async (req, res) => {
 // Cancel a leave request
 exports.cancelLeave = async (req, res) => {
   try {
-    await leaveService.cancelLeave(req.query.LeaveReqID);
+    await leaveService.cancelLeave(req.headers['leavereqid']);
     res.json({ message: "Leave cancelled" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -69,7 +69,7 @@ exports.approveRejectLeave = async (req, res) => {
 // Get all pending leaves for an EmpID
 exports.getPendingLeaves = async (req, res) => {
   try {
-    const pending = await leaveService.getPendingLeaves(req.query.EmpID);
+    const pending = await leaveService.getPendingLeaves(req.cookies.EmpID);
     res.json(pending);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -79,7 +79,7 @@ exports.getPendingLeaves = async (req, res) => {
 // Get one leave by ID
 exports.getLeaveById = async (req, res) => {
   try {
-    const leave = await leaveService.getLeaveById(req.query.LeaveReqID);
+    const leave = await leaveService.getLeaveById(req.headers['leavereqid']);
     res.json(leave);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -104,7 +104,7 @@ exports.getLeaveRequestTransactions = async (req, res) => {
 // Get all requests for an employee
 exports.getLeaveRequestDetails = async (req, res) => {
   try {
-    const details = await leaveService.getLeaveRequestDetails(req.query.EmpID);
+    const details = await leaveService.getLeaveRequestDetails(req.cookies.EmpID);
     res.json(details);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -137,7 +137,7 @@ exports.draftSaveLeaveRequest = async (req, res) => {
 
 exports.getPendingLeaveRequestDetails = async (req, res) => {
   try {
-    const detail = await leaveService.getPendingLeaveRequestDetails(req.query.LeaveReqID);
+    const detail = await leaveService.getPendingLeaveRequestDetails(req.headers['leavereqid']);
     res.json(detail);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -167,6 +167,13 @@ exports.changeLeaveRequestApproval = async (req, res) => {
 exports.getDelegates = async (req, res) => {
   res.json([]);
 };
+// Delegate leave approval
 exports.delegateLeaveApproval = async (req, res) => {
-  res.json({ error: "Delegation structure not present in current schema." });
+  try {
+    const { requestId, newApproverEmpID } = req.body;
+    await leaveService.delegateLeaveApproval(requestId, newApproverEmpID);
+    res.json({ message: 'Leave approval delegated successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };

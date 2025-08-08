@@ -1,10 +1,10 @@
-const flightTicketService = require('../services/flightTicket.service');
+const flightTicketService = require('../services/flightTicket.services');
 
 // Get flight ticket request details for an employee
 exports.getFlightTicketRequestDetails = async (req, res) => {
   try {
-    const { EmpID } = req.query;
-    const details = await flightTicketService.getFlightTicketRequestDetails(EmpID);
+    
+    const details = await flightTicketService.getFlightTicketRequestDetails(req.headers.reqid);
     res.json(details);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -14,8 +14,8 @@ exports.getFlightTicketRequestDetails = async (req, res) => {
 // Get flight ticket transactions/history
 exports.getFlightTicketTransactions = async (req, res) => {
   try {
-    const { EmpID } = req.query;
-    const transactions = await flightTicketService.getFlightTicketTransactions(EmpID);
+    
+    const transactions = await flightTicketService.getFlightTicketTransactions(req.cookies.empid, req.cookies.context.companyid);
     res.json(transactions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -113,8 +113,7 @@ exports.getPendingFlightTicketRequestsDetails = async (req, res) => {
 // Get all pending flight ticket requests for approver
 exports.getPendingFlightTicketRequests = async (req, res) => {
   try {
-    const { ApproverEmpID } = req.query;
-    const pendingRequests = await flightTicketService.getPendingFlightTicketRequests(ApproverEmpID);
+    const pendingRequests = await flightTicketService.getPendingFlightTicketRequests(req.cookies.EmpID);
     res.json(pendingRequests);
   } catch (err) {
     res.status(500).json({ error: err.message });

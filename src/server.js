@@ -8,7 +8,7 @@ const server = http.createServer(app);
 
 // Start the server
 server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+  console.log(`Server is running on port ${PORT} and URL http://localhost:${PORT}`);
 });
 
 // Optionally, shutdown cleanly on SIGINT/SIGTERM

@@ -23,6 +23,13 @@ async function getFlightTicketTransactions(EmpID) {
 // Submit a new flight ticket request
 async function submitFlightTicketRequest(data) {
   const pool = await sql.connect(dbConfig);
+
+  // Determine manager for this employee
+  let managerID = null;
+  const mgrRes = await pool.request()
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID');
+  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
   await pool.request()
     .input('EmpID', sql.VarChar(30), data.EmpID)
     .input('ReqID', sql.VarChar(30), data.ReqID)
@@ -35,17 +42,25 @@ async function submitFlightTicketRequest(data) {
     .input('ReturnDate', sql.VarChar(50), data.ReturnDate)
     .input('CreatedDate', sql.Date, new Date())
     .input('status', sql.VarChar(20), 'Pending')
+    .input('ApproverEmpID', sql.VarChar(30), managerID)
     .query(`
       INSERT INTO FlightTicketReqTable
-      (EmpID, ReqID, DepartingDate, [From], [To], Purpose, Class, ReturnTrip, ReturnDate, CreatedDate, status)
+      (EmpID, ReqID, DepartingDate, [From], [To], Purpose, Class, ReturnTrip, ReturnDate, CreatedDate, ApproverEmpID, status)
       VALUES
-      (@EmpID, @ReqID, @DepartingDate, @From, @To, @Purpose, @Class, @ReturnTrip, @ReturnDate, @CreatedDate, @status)
+      (@EmpID, @ReqID, @DepartingDate, @From, @To, @Purpose, @Class, @ReturnTrip, @ReturnDate, @CreatedDate, @ApproverEmpID, @status)
     `);
 }
 
 // Submit a flight ticket request on behalf of another employee
 async function submitFlightTicketRequestOnBehalf(data) {
   const pool = await sql.connect(dbConfig);
+
+  // Determine manager for this employee
+  let managerID = null;
+  const mgrRes = await pool.request()
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID');
+  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
   await pool.request()
     .input('EmpID', sql.VarChar(30), data.EmpID)
     .input('ReqID', sql.VarChar(30), data.ReqID)
@@ -58,11 +73,12 @@ async function submitFlightTicketRequestOnBehalf(data) {
     .input('ReturnDate', sql.VarChar(50), data.ReturnDate)
     .input('CreatedDate', sql.Date, new Date())
     .input('status', sql.VarChar(20), 'Pending')
+    .input('ApproverEmpID', sql.VarChar(30), managerID)
     .query(`
       INSERT INTO FlightTicketReqTable
-      (EmpID, ReqID, DepartingDate, [From], [To], Purpose, Class, ReturnTrip, ReturnDate, CreatedDate, status)
+      (EmpID, ReqID, DepartingDate, [From], [To], Purpose, Class, ReturnTrip, ReturnDate, CreatedDate, ApproverEmpID, status)
       VALUES
-      (@EmpID, @ReqID, @DepartingDate, @From, @To, @Purpose, @Class, @ReturnTrip, @ReturnDate, @CreatedDate, @status)
+      (@EmpID, @ReqID, @DepartingDate, @From, @To, @Purpose, @Class, @ReturnTrip, @ReturnDate, @CreatedDate, @ApproverEmpID, @status)
     `);
 }
 
@@ -90,6 +106,13 @@ async function editFlightTicketRequest(requestId, updateData) {
 // Save as draft
 async function draftSaveFlightTicketRequest(data) {
   const pool = await sql.connect(dbConfig);
+
+  // Determine manager for this employee
+  let managerID = null;
+  const mgrRes = await pool.request()
+    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID');
+  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
   await pool.request()
     .input('EmpID', sql.VarChar(30), data.EmpID)
     .input('ReqID', sql.VarChar(30), data.ReqID)
@@ -102,11 +125,12 @@ async function draftSaveFlightTicketRequest(data) {
     .input('ReturnDate', sql.VarChar(50), data.ReturnDate)
     .input('CreatedDate', sql.Date, new Date())
     .input('status', sql.VarChar(20), 'Draft')
+    .input('ApproverEmpID', sql.VarChar(30), managerID)
     .query(`
       INSERT INTO FlightTicketReqTable
-      (EmpID, ReqID, DepartingDate, [From], [To], Purpose, Class, ReturnTrip, ReturnDate, CreatedDate, status)
+      (EmpID, ReqID, DepartingDate, [From], [To], Purpose, Class, ReturnTrip, ReturnDate, CreatedDate, ApproverEmpID, status)
       VALUES
-      (@EmpID, @ReqID, @DepartingDate, @From, @To, @Purpose, @Class, @ReturnTrip, @ReturnDate, @CreatedDate, @status)
+      (@EmpID, @ReqID, @DepartingDate, @From, @To, @Purpose, @Class, @ReturnTrip, @ReturnDate, @CreatedDate, @ApproverEmpID, @status)
     `);
 }
 

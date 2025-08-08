@@ -1,4 +1,8 @@
 {
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "compression": "^1.8.1",
@@ -10,5 +14,9 @@
     "jsonwebtoken": "^9.0.2",
     "mssql": "^11.0.1",
     "multer": "^2.0.2"
+  },
+  "devDependencies": {
+    "cookie-parser": "^1.4.7",
+    "nodemon": "^3.1.10"
   }
 }

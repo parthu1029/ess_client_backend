@@ -1,81 +1,9 @@
 const documentService = require('../services/document.service');
 
-// Get all documents
-exports.getAllDocuments = async (req, res) => {
-  try {
-    const docs = await documentService.getAllDocuments();
-    res.json(docs);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Get document by ID
-exports.getDocumentById = async (req, res) => {
-  try {
-    const { id } = req.query;
-    const doc = await documentService.getDocumentById(id);
-    if (doc) {
-      res.json(doc);
-    } else {
-      res.status(404).json({ error: 'Document not found' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Download document (send file as attachment)
-exports.downloadDocument = async (req, res) => {
-  try {
-    const { id } = req.query;
-    const file = await documentService.downloadDocument(id);
-    if (file) {
-      res.set({
-        'Content-Type': file.ContentType,
-        'Content-Disposition': `attachment; filename="${file.FileName}"`,
-      });
-      res.send(file.FileData);
-    } else {
-      res.status(404).json({ error: 'Document not found' });
-    }
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Upload new document
-exports.uploadDocument = async (req, res) => {
-  try {
-    const { originalname, mimetype, buffer } = req.file;
-    const metadata = req.body; // other metadata like uploadedBy, description, etc.
-    await documentService.uploadDocument({
-      FileName: originalname,
-      ContentType: mimetype,
-      FileData: buffer,
-      ...metadata,
-    });
-    res.json({ message: 'Document uploaded successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Update document metadata by ID
-exports.updateDocumentMetadata = async (req, res) => {
-  try {
-    const data = req.body; // should contain id and fields to update
-    await documentService.updateDocumentMetadata(data);
-    res.json({ message: 'Document metadata updated' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
 // Delete document by ID
 exports.deleteDocument = async (req, res) => {
   try {
-    const { id } = req.query;
+    const id = req.headers['id'];
     await documentService.deleteDocument(id);
     res.json({ message: 'Document deleted successfully' });
   } catch (err) {
@@ -83,11 +11,12 @@ exports.deleteDocument = async (req, res) => {
   }
 };
 
-// Get document transactions (e.g., logs/history)
+// Get document transactions
 exports.getDocumentTransactions = async (req, res) => {
   try {
-    const { DocID } = req.query;
-    const transactions = await documentService.getDocumentTransactions(DocID);
+    const EmpID = req.cookies.EmpID;
+    const CompanyID = req.cookies.context.CompanyID;
+    const transactions = await documentService.getDocumentRequestTransactions(EmpID,CompanyID);
     res.json(transactions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -97,8 +26,8 @@ exports.getDocumentTransactions = async (req, res) => {
 // Get document request details for user
 exports.getDocumentRequestDetails = async (req, res) => {
   try {
-    const { EmpID } = req.query;
-    const details = await documentService.getDocumentRequestDetails(EmpID);
+    const reqID = req.headers['reqid'];
+    const details = await documentService.getDocumentRequestDetails(reqID);
     res.json(details);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -109,7 +38,7 @@ exports.getDocumentRequestDetails = async (req, res) => {
 exports.submitDocumentRequest = async (req, res) => {
   try {
     const data = req.body;
-    await documentService.submitDocumentRequest(data);
+    await documentService.submitDocumentRequest(data, req.cookies.EmpID, req.cookies.context.CompanyID);
     res.json({ message: 'Document request submitted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -120,7 +49,7 @@ exports.submitDocumentRequest = async (req, res) => {
 exports.submitDocumentRequestOnBehalf = async (req, res) => {
   try {
     const data = req.body;
-    await documentService.submitDocumentRequestOnBehalf(data);
+    await documentService.submitDocumentRequestOnBehalf(data, req.body.EmpID, req.cookies.context.CompanyID);
     res.json({ message: 'Document request submitted on behalf' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -142,7 +71,7 @@ exports.editDocumentRequest = async (req, res) => {
 exports.draftSaveDocumentRequest = async (req, res) => {
   try {
     const data = req.body;
-    await documentService.draftSaveDocumentRequest(data);
+    await documentService.draftSaveDocumentRequest(data, req.cookies.EmpID, req.cookies.context.CompanyID);
     res.json({ message: 'Document request draft saved' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -152,8 +81,8 @@ exports.draftSaveDocumentRequest = async (req, res) => {
 // Delegate document approval
 exports.delegateDocumentApproval = async (req, res) => {
   try {
-    const { requestId, newApproverEmpID } = req.body;
-    await documentService.delegateDocumentApproval(requestId, newApproverEmpID);
+    const { requestId, newApproverEmpID, actorEmpID, comments = null } = req.body;
+    await documentService.delegateDocumentApproval(requestId, newApproverEmpID, actorEmpID, comments, req.cookies.context.CompanyID);
     res.json({ message: 'Document approval delegated' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -185,8 +114,7 @@ exports.approveRejectDocumentRequest = async (req, res) => {
 // Get pending document requests for approver
 exports.getPendingDocumentRequests = async (req, res) => {
   try {
-    const { ApproverEmpID } = req.query;
-    const pendingRequests = await documentService.getPendingDocumentRequests(ApproverEmpID);
+    const pendingRequests = await documentService.getPendingDocumentRequests(req.cookies.EmpID, req.cookies.context.CompanyID);
     res.json(pendingRequests);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -196,7 +124,7 @@ exports.getPendingDocumentRequests = async (req, res) => {
 // Get details for a pending document request
 exports.getPendingDocumentRequestDetails = async (req, res) => {
   try {
-    const { requestId } = req.query;
+    const requestId = req.headers['requestid'];
     const details = await documentService.getPendingDocumentRequestDetails(requestId);
     res.json(details);
   } catch (err) {

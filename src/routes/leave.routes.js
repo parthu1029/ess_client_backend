@@ -1,6 +1,5 @@
 const express = require('express');
 const leaveController = require('../controllers/leave.controller');
-const { route } = require('./dashboard.routes');
 const router = express.Router();
 
 router.post('/applyLeave', leaveController.applyLeave);

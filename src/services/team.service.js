@@ -2,17 +2,18 @@ const sql = require('mssql');
 const dbConfig = require('../config/db.config');
 
 // Get a full team hierarchy (recursive subordinates) for a given manager
-async function getTeamHierarchy(managerEmpID) {
+async function getTeamHierarchy(managerEmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
 
   // Fetch direct reports
   const direct = await pool.request()
     .input('ManagerEmpID', sql.VarChar(30), managerEmpID)
-    .query('SELECT EmpID, Name, Position FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID');
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .query('SELECT EmpID, Name, Position FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID AND CompanyID=@CompanyID');
   const team = [];
   for (const emp of direct.recordset) {
     // Recursively get that employee's team
-    const reports = await getTeamHierarchy(emp.EmpID);
+    const reports = await getTeamHierarchy(emp.EmpID, CompanyID);
     team.push({
       EmpID: emp.EmpID,
       Name: emp.Name,
@@ -24,13 +25,14 @@ async function getTeamHierarchy(managerEmpID) {
 }
 
 // Get team calendar: leave/business trips for all direct reports (not recursive)
-async function getTeamCalendar(managerEmpID) {
+async function getTeamCalendar(managerEmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
 
   // Get direct reports' EmpIDs
   const employeesRes = await pool.request()
     .input('ManagerEmpID', sql.VarChar(30), managerEmpID)
-    .query('SELECT EmpID, Name FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID');
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .query('SELECT EmpID, Name FROM EmpProfileTable WHERE ManagerEmpID=@ManagerEmpID AND CompanyID=@CompanyID');
 
   const employees = employeesRes.recordset;
 
@@ -43,17 +45,19 @@ async function getTeamCalendar(managerEmpID) {
 
   // Get leave and business trip data
   const leaveResult = await pool.request()
+    .input('CompanyID', sql.VarChar(30), CompanyID)
     .query(`
       SELECT EmpID, FromDate, ToDate, Type, Status
       FROM LeaveReqTable
-      WHERE EmpID IN (${empIDs.map(e => `'${e}'`).join(',')})
+      WHERE EmpID IN (${empIDs.map(e => `'${e}'`).join(',')}) AND CompanyID=@CompanyID
     `);
 
   const tripResult = await pool.request()
+    .input('CompanyID', sql.VarChar(30), CompanyID)
     .query(`
       SELECT EmpID, StartDate, EndDate, Location, status
       FROM BusinessTripReqTable
-      WHERE EmpID IN (${empIDs.map(e => `'${e}'`).join(',')})
+      WHERE EmpID IN (${empIDs.map(e => `'${e}'`).join(',')}) AND CompanyID=@CompanyID
     `);
 
   // Collate results per employee
