@@ -1,5 +1,6 @@
 const sql = require('mssql');
 const dbConfig = require('../config/db.config');
+const { generateRequestId } = require('../utils/ids');
 const { randomBytes } = require('crypto');
 
 // Helper to generate unique 8-char IDs for attachments
@@ -8,13 +9,11 @@ function generateAttachmentID() {
 }
 
 // Get details for a specific business trip request for an employee
-async function getBusinessTripRequestDetails(EmpID,CompanyID, ReqID) {
+async function getBusinessTripRequestDetails(ReqID) {
   const pool = await sql.connect(dbConfig);
   const res = await pool.request()
-    .input('EmpID', sql.VarChar(30), EmpID)
-    .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('ReqID', sql.VarChar(30), ReqID)
-    .query('SELECT * FROM BusinessTripReqTable WHERE empID = @EmpID AND companyID = @CompanyID AND reqID = @ReqID');
+    .query('SELECT * FROM BusinessTripReqTable WHERE reqID = @ReqID');
   return res.recordset[0];
 }
 
@@ -37,9 +36,11 @@ async function submitBusinessTripRequest(data, fileBuffer = null, fileName = nul
   const mgrRes = await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
-    .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID AND companyID = @CompanyID');
-  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
-
+    .query('SELECT managerEmpID FROM EmpProfileTable WHERE empID = @EmpID AND companyID = @CompanyID');
+  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerEmpID;
+console.log("manager: "+managerID);
+  // Generate server-side request ID
+  const reqID = generateRequestId();
   // Handle attachment insertion
   let attachmentID = null;
   if (fileBuffer) {
@@ -59,7 +60,7 @@ async function submitBusinessTripRequest(data, fileBuffer = null, fileName = nul
 
   // Insert business trip request with attachmentID
   await pool.request()
-    .input('ReqID', sql.VarChar(30), data.ReqID)
+    .input('ReqID', sql.VarChar(30), reqID)
     .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('Location', sql.VarChar(50), data.Location)
@@ -82,7 +83,7 @@ async function submitBusinessTripRequest(data, fileBuffer = null, fileName = nul
   const creationTimelineID = generateAttachmentID();
   await pool.request()
     .input('timelineID', sql.VarChar(30), creationTimelineID)
-    .input('reqID', sql.VarChar(30), data.ReqID)
+    .input('reqID', sql.VarChar(30), reqID)
     .input('action', sql.VarChar(50), 'Created')
     .input('actorEmpID', sql.VarChar(30), EmpID)
     .input('comments', sql.VarChar(500), null)
@@ -96,7 +97,7 @@ async function submitBusinessTripRequest(data, fileBuffer = null, fileName = nul
   const pendingTimelineID = generateAttachmentID();
   await pool.request()
     .input('timelineID', sql.VarChar(30), pendingTimelineID)
-    .input('reqID', sql.VarChar(30), data.ReqID)
+    .input('reqID', sql.VarChar(30), reqID)
     .input('action', sql.VarChar(50), 'Pending')
     .input('actorEmpID', sql.VarChar(30), managerID)
     .input('comments', sql.VarChar(500), null)
@@ -106,6 +107,7 @@ async function submitBusinessTripRequest(data, fileBuffer = null, fileName = nul
       VALUES (@timelineID, @reqID, @action, @actorEmpID, @comments, @actionDate)
     `);
 
+  return reqID;
 }
 
 // Submit on behalf of another employee
@@ -113,13 +115,15 @@ async function submitBusinessTripRequestOnBehalf(data, fileBuffer = null, fileNa
   const pool = await sql.connect(dbConfig);
 
   // Determine manager for target employee
-  let managerID = null;
+  let managerEmpID = null;
   const mgrRes = await pool.request()
     .input('EmpID', sql.VarChar(30), data.EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
-    .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID AND companyID = @CompanyID');
-  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
+    .query('SELECT managerEmpID FROM EmpProfileTable WHERE empID = @EmpID AND companyID = @CompanyID');
+  if (mgrRes.recordset.length) managerEmpID = mgrRes.recordset[0].managerEmpID;
 
+  // Generate server-side request ID
+  const reqID = generateRequestId();
   // Handle attachment insertion
   let attachmentID = null;
   if (fileBuffer) {
@@ -139,7 +143,7 @@ async function submitBusinessTripRequestOnBehalf(data, fileBuffer = null, fileNa
 
   // Insert business trip request
   await pool.request()
-    .input('ReqID', sql.VarChar(30), data.ReqID)
+    .input('ReqID', sql.VarChar(30), reqID)
     .input('EmpID', sql.VarChar(30), data.EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('Location', sql.VarChar(50), data.Location)
@@ -148,7 +152,7 @@ async function submitBusinessTripRequestOnBehalf(data, fileBuffer = null, fileNa
     .input('TravelMode', sql.VarChar(30), data.TravelMode)
     .input('reason', sql.VarChar(100), data.reason)
     .input('attachmentID', sql.VarChar(30), attachmentID)
-    .input('approverEmpID', sql.VarChar(30), managerID)
+    .input('approverEmpID', sql.VarChar(30), managerEmpID)
     .input('createdDate', sql.DateTime, new Date())
     .input('status', sql.VarChar(20), 'Pending')
     .query(`
@@ -162,7 +166,7 @@ async function submitBusinessTripRequestOnBehalf(data, fileBuffer = null, fileNa
   const creationTimelineID = generateAttachmentID();
   await pool.request()
     .input('timelineID', sql.VarChar(30), creationTimelineID)
-    .input('reqID', sql.VarChar(30), data.ReqID)
+    .input('reqID', sql.VarChar(30), reqID)
     .input('action', sql.VarChar(50), 'Created')
     .input('actorEmpID', sql.VarChar(30), actorEmpID)
     .input('comments', sql.VarChar(500), null)
@@ -176,15 +180,17 @@ async function submitBusinessTripRequestOnBehalf(data, fileBuffer = null, fileNa
   const pendingTimelineID = generateAttachmentID();
   await pool.request()
     .input('timelineID', sql.VarChar(30), pendingTimelineID)
-    .input('reqID', sql.VarChar(30), data.ReqID)
+    .input('reqID', sql.VarChar(30), reqID)
     .input('action', sql.VarChar(50), 'Pending')
-    .input('actorEmpID', sql.VarChar(30), managerID)
+    .input('actorEmpID', sql.VarChar(30), managerEmpID)
     .input('comments', sql.VarChar(500), null)
     .input('actionDate', sql.DateTime, new Date())
     .query(`
       INSERT INTO RequestTimelineTable (timelineID, reqID, action, actorEmpID, comments, actionDate)
       VALUES (@timelineID, @reqID, @action, @actorEmpID, @comments, @actionDate)
     `);
+
+  return reqID;
 }
 
 // Edit existing request
@@ -226,8 +232,10 @@ async function draftSaveBusinessTripRequest(data, fileBuffer = null, fileName = 
       `);
   }
 
+  // Generate server-side request ID for draft
+  const reqID = generateRequestId();
   await pool.request()
-    .input('ReqID', sql.VarChar(30), data.ReqID)
+    .input('ReqID', sql.VarChar(30), reqID)
     .input('EmpID', sql.VarChar(30), data.EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('Location', sql.VarChar(50), data.Location)
@@ -244,14 +252,16 @@ async function draftSaveBusinessTripRequest(data, fileBuffer = null, fileName = 
       VALUES
         (@ReqID, @EmpID, @CompanyID, @Location, @StartDate, @EndDate, @TravelMode, @reason, @attachmentID, @createdDate, @status)
     `);
+
+  return reqID;
 }
 
 // Change request
-async function changeBusinessTripApproval(ReqID, newStatus) {
+async function changeBusinessTripApproval(ReqID) {
   const pool = await sql.connect(dbConfig);
   await pool.request()
     .input('ReqID', sql.VarChar(30), ReqID)
-    .input('status', sql.VarChar(20), newStatus)
+    .input('status', sql.VarChar(20), 'Change request')
     .query(`UPDATE BusinessTripReqTable SET status=@status WHERE reqID=@ReqID`);
 }
 

@@ -22,14 +22,39 @@ async function markAttendance(EmpID, CompanyID, data) {
     `);
 }
 
-// Full check-in/out times history
+// Helper function to format time as HH:mm:ss
+function formatTime(isoTime) {
+  const date = new Date(isoTime);  // Create a Date object from the ISO string
+  const hours = String(date.getUTCHours()).padStart(2, '0');  // Get hours and pad with leading 0
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');  // Get minutes and pad
+  const seconds = String(date.getUTCSeconds()).padStart(2, '0');  // Get seconds and pad
+  return `${hours}:${minutes}:${seconds}`;  // Return formatted time (HH:mm:ss)
+}
+
+// Helper function to format date as YYYY-MM-DD
+function formatDate(isoDate) {
+  const date = new Date(isoDate);  // Create a Date object from the ISO string
+  const year = date.getUTCFullYear();  // Get the year
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');  // Get the month (0-based, add 1)
+  const day = String(date.getUTCDate()).padStart(2, '0');  // Get the day of the month
+  return `${year}-${month}-${day}`;  // Return formatted date (YYYY-MM-DD)
+}
+
 async function getCheckinCheckoutHistory(EmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
   const result = await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .query('SELECT Date, CheckIn, CheckOut FROM CheckinCheckoutTable WHERE EmpID=@EmpID AND CompanyID=@CompanyID ORDER BY Date DESC');
-  return result.recordset;
+  
+  // Format CheckIn and CheckOut times
+  const formattedData = result.recordset.map(item => ({
+    Date: formatDate(item.Date),  // Format Date as YYYY-MM-DD
+    CheckIn: formatTime(item.CheckIn),  // Format CheckIn time to only show the time part
+    CheckOut: formatTime(item.CheckOut)  // Format CheckOut time to only show the time part
+  }));
+
+  return formattedData;  // Return the formatted result
 }
 
 module.exports = {

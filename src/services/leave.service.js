@@ -1,21 +1,31 @@
 const sql = require('mssql');
 const dbConfig = require('../config/db.config');
+const { randomBytes } = require('crypto');
+const { generateRequestId } = require('../utils/ids');
+
+function generateTimelineID() {
+  return randomBytes(4).toString('hex');
+}
 
 // Submit a leave (with or without attachment, which must be buffer)
-async function applyLeave(data, attachmentBuffer = null,EmpID,CompanyID) {
+async function applyLeave(data, attachmentBuffer = null, EmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
 
   // Determine manager for this employee
   let managerID = null;
   const mgrRes = await pool.request()
-    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID AND CompanyID = @CompanyID');
   if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
 
+  // Generate server-side LeaveReqID
+  const leaveReqID = generateRequestId();
+
   const result = await pool.request()
-    .input('LeaveReqID', sql.VarChar(30), data.LeaveReqID)
-    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('LeaveReqID', sql.VarChar(30), leaveReqID)
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('FromDate', sql.DateTime, data.FromDate)
     .input('ToDate', sql.DateTime, data.ToDate)
     .input('Type', sql.VarChar(10), data.Type)
@@ -25,10 +35,10 @@ async function applyLeave(data, attachmentBuffer = null,EmpID,CompanyID) {
     .input('approverEmpID', sql.VarChar(30), managerID)
     .input('Description', sql.VarChar(500), data.Description)
     .query(`
-      INSERT INTO LeaveReqTable (LeaveReqID, EmpID, FromDate, ToDate, Type, Attachment, RequestDate, Status, approverEmpID, Description)
-      VALUES (@LeaveReqID, @EmpID, @FromDate, @ToDate, @Type, @Attachment, @RequestDate, @Status, @approverEmpID, @Description)
+      INSERT INTO LeaveReqTable (LeaveReqID, EmpID, CompanyID, FromDate, ToDate, Type, Attachment, RequestDate, Status, approverEmpID, Description)
+      VALUES (@LeaveReqID, @EmpID, @CompanyID, @FromDate, @ToDate, @Type, @Attachment, @RequestDate, @Status, @approverEmpID, @Description)
     `);
-  return data.LeaveReqID;
+  return leaveReqID;
 }
 
 // All leave history for an employee
@@ -77,13 +87,18 @@ async function approveRejectLeave(LeaveReqID, action) {
 }
 
 // Pending leaves ("Pending" status) for employee
-async function approveRejectLeaveRequest(EmpID,CompanyID) {
+async function approveRejectLeaveRequest(EmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
   const res = await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .query('SELECT * FROM LeaveReqTable WHERE Status=\'Pending\' AND approverEmpID=@EmpID AND CompanyID=@CompanyID ORDER BY RequestDate DESC');
   return res.recordset;
+}
+
+// Explicit name used by controller
+async function getPendingLeaves(EmpID, CompanyID) {
+  return approveRejectLeaveRequest(EmpID, CompanyID);
 }
 
 // Get leave request by ID
@@ -122,20 +137,24 @@ async function editLeaveRequest(LeaveReqID, updateData) {
 }
 
 // Save as draft
-async function draftSaveLeaveRequest(data, attachmentBuffer = null,EmpID,CompanyID) {
+async function draftSaveLeaveRequest(data, attachmentBuffer = null, EmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
 
   // Determine manager for this employee
   let managerID = null;
   const mgrRes = await pool.request()
-    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID AND CompanyID = @CompanyID');
   if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
 
+  // Generate server-side LeaveReqID for draft
+  const leaveReqIDDraft = generateRequestId();
+
   await pool.request()
-    .input('LeaveReqID', sql.VarChar(30), data.LeaveReqID)
-    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('LeaveReqID', sql.VarChar(30), leaveReqIDDraft)
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('FromDate', sql.DateTime, data.FromDate)
     .input('ToDate', sql.DateTime, data.ToDate)
     .input('Type', sql.VarChar(10), data.Type)
@@ -145,9 +164,10 @@ async function draftSaveLeaveRequest(data, attachmentBuffer = null,EmpID,Company
     .input('approverEmpID', sql.VarChar(30), managerID)
     .input('Description', sql.VarChar(500), data.Description)
     .query(`
-      INSERT INTO LeaveReqTable (LeaveReqID, EmpID, FromDate, ToDate, Type, Attachment, RequestDate, Status, approverEmpID, Description)
-      VALUES (@LeaveReqID, @EmpID, @FromDate, @ToDate, @Type, @Attachment, @RequestDate, @Status, @approverEmpID, @Description)
+      INSERT INTO LeaveReqTable (LeaveReqID, EmpID, CompanyID, FromDate, ToDate, Type, Attachment, RequestDate, Status, approverEmpID, Description)
+      VALUES (@LeaveReqID, @EmpID, @CompanyID, @FromDate, @ToDate, @Type, @Attachment, @RequestDate, @Status, @approverEmpID, @Description)
     `);
+  return leaveReqIDDraft;
 }
 
 // Pending request details by ID
@@ -169,28 +189,26 @@ async function changeLeaveRequestApproval(LeaveReqID, newStatus) {
 }
 
 // Delegate leave approval (assign to new approver)
-async function delegateLeaveApproval(LeaveReqID, newApproverEmpID) {
+async function delegateLeaveApproval(LeaveReqID, newApproverEmpID, actorEmpID, comments = null) {
   const pool = await sql.connect(dbConfig);
   await pool.request()
     .input('LeaveReqID', sql.VarChar(30), LeaveReqID)
     .input('approverEmpID', sql.VarChar(30), newApproverEmpID)
     .query('UPDATE LeaveReqTable SET approverEmpID=@approverEmpID WHERE LeaveReqID=@LeaveReqID');
-  
+
   // Log delegation in timeline
-    const timelineID = generateAttachmentID();
-    await pool.request()
-      .input('timelineID', sql.VarChar(30), timelineID)
-      .input('reqID', sql.VarChar(30), LeaveReqID)
-      .input('action', sql.VarChar(50), 'Delegated')
-      .input('actorEmpID', sql.VarChar(30), actorEmpID)
-      .input('comments', sql.VarChar(500), comments)
-      .input('actionDate', sql.DateTime, new Date())
-      .query(`
-        INSERT INTO ReqTimelineTable
-          (timelineID, reqID, action, actorEmpID, comments, actionDate)
-        VALUES
-          (@timelineID, @reqID, @action, @actorEmpID, @comments, @actionDate)
-      `);
+  const timelineID = generateTimelineID();
+  await pool.request()
+    .input('timelineID', sql.VarChar(30), timelineID)
+    .input('reqID', sql.VarChar(30), LeaveReqID)
+    .input('action', sql.VarChar(50), 'Delegated')
+    .input('actorEmpID', sql.VarChar(30), actorEmpID)
+    .input('comments', sql.VarChar(500), comments)
+    .input('actionDate', sql.DateTime, new Date())
+    .query(`
+      INSERT INTO RequestTimelineTable (timelineID, reqID, action, actorEmpID, comments, actionDate)
+      VALUES (@timelineID, @reqID, @action, @actorEmpID, @comments, @actionDate)
+    `);
 }
 
 module.exports = {
@@ -208,5 +226,6 @@ module.exports = {
   getPendingLeaveRequestDetails,
   approveRejectLeaveRequest,
   changeLeaveRequestApproval,
-  delegateLeaveApproval
+  delegateLeaveApproval,
+  getPendingLeaves
 };

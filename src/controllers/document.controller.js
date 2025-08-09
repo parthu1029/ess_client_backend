@@ -38,8 +38,12 @@ exports.getDocumentRequestDetails = async (req, res) => {
 exports.submitDocumentRequest = async (req, res) => {
   try {
     const data = req.body;
-    await documentService.submitDocumentRequest(data, req.cookies.EmpID, req.cookies.context.CompanyID);
-    res.json({ message: 'Document request submitted' });
+    const DocumentReqID = await documentService.submitDocumentRequest(
+      data,
+      req.cookies.EmpID,
+      req.cookies.context.CompanyID
+    );
+    res.json({ message: 'Document request submitted', DocumentReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -49,8 +53,12 @@ exports.submitDocumentRequest = async (req, res) => {
 exports.submitDocumentRequestOnBehalf = async (req, res) => {
   try {
     const data = req.body;
-    await documentService.submitDocumentRequestOnBehalf(data, req.body.EmpID, req.cookies.context.CompanyID);
-    res.json({ message: 'Document request submitted on behalf' });
+    const DocumentReqID = await documentService.submitDocumentRequestOnBehalf(
+      data,
+      req.body.EmpID,
+      req.cookies.context.CompanyID
+    );
+    res.json({ message: 'Document request submitted on behalf', DocumentReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -71,8 +79,12 @@ exports.editDocumentRequest = async (req, res) => {
 exports.draftSaveDocumentRequest = async (req, res) => {
   try {
     const data = req.body;
-    await documentService.draftSaveDocumentRequest(data, req.cookies.EmpID, req.cookies.context.CompanyID);
-    res.json({ message: 'Document request draft saved' });
+    const DocumentReqID = await documentService.draftSaveDocumentRequest(
+      data,
+      req.cookies.EmpID,
+      req.cookies.context.CompanyID
+    );
+    res.json({ message: 'Document request draft saved', DocumentReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -81,8 +93,8 @@ exports.draftSaveDocumentRequest = async (req, res) => {
 // Delegate document approval
 exports.delegateDocumentApproval = async (req, res) => {
   try {
-    const { requestId, newApproverEmpID, actorEmpID, comments = null } = req.body;
-    await documentService.delegateDocumentApproval(requestId, newApproverEmpID, actorEmpID, comments, req.cookies.context.CompanyID);
+    const { requestID, newApproverEmpID, comments = null } = req.body;
+    await documentService.delegateDocumentApproval(requestID, newApproverEmpID, comments);
     res.json({ message: 'Document approval delegated' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -92,8 +104,8 @@ exports.delegateDocumentApproval = async (req, res) => {
 // Change document approval status
 exports.changeDocumentApproval = async (req, res) => {
   try {
-    const { requestId, approvalStatus } = req.body;
-    await documentService.changeDocumentApproval(requestId, approvalStatus);
+    const { requestID } = req.body;
+    await documentService.changeDocumentApproval(requestID);
     res.json({ message: 'Document approval status changed' });
   } catch (err) {
     res.status(500).json({ error: err.message });

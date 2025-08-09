@@ -3,7 +3,12 @@ const leaveService = require('../services/leave.service');
 // Apply/submit a new leave request
 exports.applyLeave = async (req, res) => {
   try {
-    const result = await leaveService.applyLeave(req.body, req.file?.buffer);
+    const result = await leaveService.applyLeave(
+      req.body,
+      req.file?.buffer,
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json({ message: "Leave request submitted", LeaveReqID: result });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -19,7 +24,10 @@ exports.getLeaveBalance = async (req, res) => {
 // Get leave history for an employee
 exports.getLeaveHistory = async (req, res) => {
   try {
-    const history = await leaveService.getLeaveHistory(req.cookies.EmpID);
+    const history = await leaveService.getLeaveHistory(
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(history);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -69,7 +77,10 @@ exports.approveRejectLeave = async (req, res) => {
 // Get all pending leaves for an EmpID
 exports.getPendingLeaves = async (req, res) => {
   try {
-    const pending = await leaveService.getPendingLeaves(req.cookies.EmpID);
+    const pending = await leaveService.getPendingLeaves(
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(pending);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -104,7 +115,10 @@ exports.getLeaveRequestTransactions = async (req, res) => {
 // Get all requests for an employee
 exports.getLeaveRequestDetails = async (req, res) => {
   try {
-    const details = await leaveService.getLeaveRequestDetails(req.cookies.EmpID);
+    const details = await leaveService.getLeaveRequestDetails(
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(details);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -128,8 +142,13 @@ exports.editLeaveRequest = async (req, res) => {
 // Save as draft
 exports.draftSaveLeaveRequest = async (req, res) => {
   try {
-    await leaveService.draftSaveLeaveRequest(req.body, req.file?.buffer);
-    res.json({ message: "Leave draft saved" });
+    const LeaveReqID = await leaveService.draftSaveLeaveRequest(
+      req.body,
+      req.file?.buffer,
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
+    res.json({ message: "Leave draft saved", LeaveReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -147,7 +166,7 @@ exports.getPendingLeaveRequestDetails = async (req, res) => {
 // PATCH approve/reject
 exports.approveRejectLeaveRequest = async (req, res) => {
   try {
-    await leaveService.approveRejectLeaveRequest(req.body.LeaveReqID, req.body.action);
+    await leaveService.approveRejectLeave(req.body.LeaveReqID, req.body.action);
     res.json({ message: `Leave ${req.body.action}d` });
   } catch (err) {
     res.status(500).json({ error: err.message });

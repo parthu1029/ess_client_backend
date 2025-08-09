@@ -7,8 +7,13 @@ exports.submitExcuseRequest = async (req, res) => {
     const data = req.body;
     const attachment = req.file ? { fileName: originalname, contentType: mimetype, fileData: buffer } : null;
 
-    await excuseService.submitExcuseRequest(data, attachment, req.cookies.EmpID, req.cookies.context.CompanyID);
-    res.json({ message: 'Excuse submitted successfully' });
+    const ExcuseReqID = await excuseService.submitExcuseRequest(
+      data,
+      attachment,
+      req.cookies.EmpID,
+      req.cookies.context.CompanyID
+    );
+    res.json({ message: 'Excuse submitted successfully', ExcuseReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -63,8 +68,13 @@ exports.submitExcuseOnBehalf = async (req, res) => {
     const data = req.body;
     const attachment = req.file ? { fileName: originalname, contentType: mimetype, fileData: buffer } : null;
 
-    await excuseService.submitExcuseOnBehalf(data, attachment, req.body.EmpID, req.cookies.context.CompanyID);
-    res.json({ message: 'Excuse submitted on behalf successfully' });
+    const ExcuseReqID = await excuseService.submitExcuseOnBehalf(
+      data,
+      attachment,
+      req.body.EmpID,
+      req.cookies.context.CompanyID
+    );
+    res.json({ message: 'Excuse submitted on behalf successfully', ExcuseReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -85,8 +95,12 @@ exports.editExcuseRequest = async (req, res) => {
 exports.draftSaveExcuseRequest = async (req, res) => {
   try {
     const data = req.body;
-    await excuseService.draftSaveExcuseRequest(data);
-    res.json({ message: 'Excuse request draft saved' });
+    const ExcuseReqID = await excuseService.draftSaveExcuseRequest(
+      data,
+      req.cookies.EmpID,
+      req.cookies.context.CompanyID
+    );
+    res.json({ message: 'Excuse request draft saved', ExcuseReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

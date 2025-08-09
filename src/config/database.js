@@ -2,7 +2,7 @@ const sql = require('mssql');
 
 const dbConfig = {
     server: process.env.DB_SERVER || 'localhost',
-    database: process.env.DB_NAME || 'EmployeeDB',
+    database: process.env.DB_NAME || 'EmployeeDB_3',
     user: process.env.DB_USER || 'testuser',
     password: process.env.DB_PASSWORD || '1234',
     options: {

@@ -15,7 +15,7 @@ router.patch('/editDocumentRequest',documentController.editDocumentRequest)
 router.post('/draftSaveDocumentRequest',documentController.draftSaveDocumentRequest)
 router.post('/delegateDocumentApproval',documentController.delegateDocumentApproval)
 router.patch('/changeDocumentApproval',documentController.changeDocumentApproval)
-router.patch('approveRejectDocumentRequest',documentController.approveRejectDocumentRequest)
+router.patch('/approveRejectDocumentRequest',documentController.approveRejectDocumentRequest)
 router.get('/getPendingDocumentRequests',documentController.getPendingDocumentRequests)
 router.get('/getPendingDocumentRequestDetails',documentController.getPendingDocumentRequestDetails)
 

@@ -4,7 +4,10 @@ const flightTicketService = require('../services/flightTicket.services');
 exports.getFlightTicketRequestDetails = async (req, res) => {
   try {
     
-    const details = await flightTicketService.getFlightTicketRequestDetails(req.headers.reqid);
+    const details = await flightTicketService.getFlightTicketRequestDetails(
+      req.headers.reqid,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(details);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -15,7 +18,10 @@ exports.getFlightTicketRequestDetails = async (req, res) => {
 exports.getFlightTicketTransactions = async (req, res) => {
   try {
     
-    const transactions = await flightTicketService.getFlightTicketTransactions(req.cookies.empid, req.cookies.context.companyid);
+    const transactions = await flightTicketService.getFlightTicketTransactions(
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(transactions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -26,8 +32,12 @@ exports.getFlightTicketTransactions = async (req, res) => {
 exports.submitFlightTicketRequest = async (req, res) => {
   try {
     const data = req.body; // expects all needed fields
-    await flightTicketService.submitFlightTicketRequest(data);
-    res.json({ message: 'Flight ticket request submitted successfully' });
+    const ReqID = await flightTicketService.submitFlightTicketRequest(
+      data,
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
+    res.json({ message: 'Flight ticket request submitted successfully', ReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -37,8 +47,12 @@ exports.submitFlightTicketRequest = async (req, res) => {
 exports.submitFlightTicketRequestOnBehalf = async (req, res) => {
   try {
     const data = req.body;
-    await flightTicketService.submitFlightTicketRequestOnBehalf(data);
-    res.json({ message: 'Flight ticket request submitted on behalf successfully' });
+    const ReqID = await flightTicketService.submitFlightTicketRequestOnBehalf(
+      data,
+      req.body.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
+    res.json({ message: 'Flight ticket request submitted on behalf successfully', ReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -48,7 +62,11 @@ exports.submitFlightTicketRequestOnBehalf = async (req, res) => {
 exports.editFlightTicketRequest = async (req, res) => {
   try {
     const { requestId, ...updateData } = req.body;
-    await flightTicketService.editFlightTicketRequest(requestId, updateData);
+    await flightTicketService.editFlightTicketRequest(
+      requestId,
+      updateData,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json({ message: 'Flight ticket request updated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -59,8 +77,12 @@ exports.editFlightTicketRequest = async (req, res) => {
 exports.draftSaveFlightTicketRequest = async (req, res) => {
   try {
     const data = req.body;
-    await flightTicketService.draftSaveFlightTicketRequest(data);
-    res.json({ message: 'Flight ticket request draft saved successfully' });
+    const ReqID = await flightTicketService.draftSaveFlightTicketRequest(
+      data,
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
+    res.json({ message: 'Flight ticket request draft saved successfully', ReqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -70,7 +92,11 @@ exports.draftSaveFlightTicketRequest = async (req, res) => {
 exports.delegateFlightTicketApproval = async (req, res) => {
   try {
     const { requestId, newApproverEmpID } = req.body;
-    await flightTicketService.delegateFlightTicketApproval(requestId, newApproverEmpID);
+    await flightTicketService.delegateFlightTicketApproval(
+      requestId,
+      newApproverEmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json({ message: 'Flight ticket approval delegated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -81,7 +107,11 @@ exports.delegateFlightTicketApproval = async (req, res) => {
 exports.changeFlightTicketApproval = async (req, res) => {
   try {
     const { requestId, approvalStatus } = req.body;
-    await flightTicketService.changeFlightTicketApproval(requestId, approvalStatus);
+    await flightTicketService.changeFlightTicketApproval(
+      requestId,
+      approvalStatus,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json({ message: 'Flight ticket approval status changed successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -92,7 +122,12 @@ exports.changeFlightTicketApproval = async (req, res) => {
 exports.approveRejectFlightTicketRequest = async (req, res) => {
   try {
     const { requestId, action, comments } = req.body; // action: 'approve' or 'reject'
-    await flightTicketService.approveRejectFlightTicketRequest(requestId, action, comments);
+    await flightTicketService.approveRejectFlightTicketRequest(
+      requestId,
+      action,
+      comments,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json({ message: `Flight ticket request ${action}d successfully` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -103,7 +138,10 @@ exports.approveRejectFlightTicketRequest = async (req, res) => {
 exports.getPendingFlightTicketRequestsDetails = async (req, res) => {
   try {
     const { requestId } = req.query;
-    const details = await flightTicketService.getPendingFlightTicketRequestsDetails(requestId);
+    const details = await flightTicketService.getPendingFlightTicketRequestsDetails(
+      requestId,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(details);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -113,7 +151,10 @@ exports.getPendingFlightTicketRequestsDetails = async (req, res) => {
 // Get all pending flight ticket requests for approver
 exports.getPendingFlightTicketRequests = async (req, res) => {
   try {
-    const pendingRequests = await flightTicketService.getPendingFlightTicketRequests(req.cookies.EmpID);
+    const pendingRequests = await flightTicketService.getPendingFlightTicketRequests(
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(pendingRequests);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,9 +1,10 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
-const path = require('path');
-const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const normalizeCookies = require('./middlewares/normalizeCookies');
+const path = require('path');
+const fs = require('fs');
 
 // Routers (add all your routers here)
 const profileRoutes = require('./routes/profile.routes');
@@ -28,9 +29,48 @@ const app = express();
 // Security and middleware
 app.use(cors());
 app.use(helmet());
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
+app.use(normalizeCookies);
+
+// Web UI: expose endpoints from Postman collection for dynamic rendering
+app.get('/web/endpoints', (req, res) => {
+  try {
+    const collectionPath = path.join(__dirname, '..', 'postman', 'ESS_Client_Backend_API.postman_collection.json');
+    const raw = fs.readFileSync(collectionPath, 'utf8');
+    const col = JSON.parse(raw);
+    const modules = [];
+    const topItems = Array.isArray(col.item) ? col.item : [];
+    for (const mod of topItems) {
+      const moduleName = mod && mod.name ? mod.name : 'Misc';
+      const endpoints = [];
+      const subItems = (mod && Array.isArray(mod.item)) ? mod.item : [];
+      for (const ep of subItems) {
+        const req = ep && ep.request ? ep.request : {};
+        const method = (req.method || 'GET').toUpperCase();
+        let url = '';
+        const u = req.url;
+        if (typeof u === 'string') {
+          url = u;
+        } else if (u && typeof u === 'object') {
+          url = u.raw || '';
+        }
+        const headers = Array.isArray(req.header) ? req.header : [];
+        const body = req.body || null;
+        endpoints.push({ name: ep.name || '', method, url, headers, body });
+      }
+      modules.push({ name: moduleName, endpoints });
+    }
+    res.json({ modules });
+  } catch (e) {
+    console.error('Failed to load Postman collection for /web/endpoints:', e);
+    res.status(500).json({ error: 'Failed to load endpoints' });
+  }
+});
+
+// Serve the static testing UI at /web
+app.use('/web', express.static(path.join(__dirname, '..', 'web_application')));
 // Routers (mount with an API prefix)
 app.use('/api/profile', profileRoutes);
 

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ESS API Web Tester</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <header class="app-header">
+    <h1>ESS API Web Tester</h1>
+    <div class="status" id="serverStatus">Loading endpoints…</div>
+  </header>
+
+  <section class="panel">
+    <h2>Cookie & Base Settings</h2>
+    <div class="grid">
+      <label>
+        <span>Base URL</span>
+        <input id="baseUrl" type="text" placeholder="http://localhost:3001" />
+      </label>
+      <label>
+        <span>EmpID</span>
+        <input id="empId" type="text" placeholder="e.g., FI000004" />
+      </label>
+      <label>
+        <span>CompanyID</span>
+        <input id="companyId" type="text" placeholder="e.g., C123XYZ" />
+      </label>
+    </div>
+    <div class="actions">
+      <button id="applyCookiesBtn">Set Cookies</button>
+      <button id="clearCookiesBtn" class="secondary">Clear Cookies</button>
+    </div>
+    <p class="hint">Sets cookies on this origin: EmpID and Context (as JSON cookie using cookie-parser's j: prefix).</p>
+  </section>
+
+  <section class="panel">
+    <h2>Variables</h2>
+    <p class="hint">Used to replace placeholders like {{reqid}} in URLs or bodies.</p>
+    <div id="variables" class="vars-list"></div>
+    <div class="actions">
+      <button id="addVarBtn" class="secondary">Add Variable</button>
+      <button id="saveVarsBtn">Save Variables</button>
+    </div>
+  </section>
+
+  <main id="modulesContainer" class="modules"></main>
+
+  <template id="endpointTemplate">
+    <div class="endpoint">
+      <div class="endpoint-header">
+        <div class="title">
+          <span class="method"></span>
+          <span class="name"></span>
+        </div>
+        <div class="url"></div>
+      </div>
+      <div class="endpoint-body"></div>
+      <div class="endpoint-actions">
+        <button class="sendBtn">Send</button>
+        <button class="clearBtn secondary">Clear</button>
+      </div>
+      <div class="endpoint-result">
+        <div class="result-meta">
+          <span class="status"></span>
+          <span class="time"></span>
+        </div>
+        <pre class="response"></pre>
+      </div>
+    </div>
+  </template>
+
+  <script src="./main.js"></script>
+</body>
+</html>

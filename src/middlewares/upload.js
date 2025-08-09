@@ -9,13 +9,17 @@ const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   // Optional: add file size and type validations
-  limits: { fileSize: 3 * 1024 * 1024 }, // 3MB limit (change as needed)
+  limits: { fileSize: 30 * 1024 * 1024 }, // 30MB limit (change as needed)
   fileFilter: (req, file, cb) => {
-    // Accept JPEG and PNG only
-    if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/png') {
+    // Accept JPEG, PNG, and PDF
+    if (
+      file.mimetype === 'image/jpeg' ||
+      file.mimetype === 'image/png' ||
+      file.mimetype === 'application/pdf'
+    ) {
       cb(null, true);
     } else {
-      cb(new Error('Only .jpeg and .png files are allowed!'), false);
+      cb(new Error('Only .jpeg, .png and .pdf files are allowed!'), false);
     }
   }
 });

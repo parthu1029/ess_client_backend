@@ -28,7 +28,8 @@ exports.submitBusinessTripRequest = async (req, res) => {
   try {
     const data = req.body;
     const file = req.file;
-    await businessTripService.submitBusinessTripRequest(
+    console.log(data);
+    const reqID = await businessTripService.submitBusinessTripRequest(
       data,
       file?.buffer,
       file?.originalname,
@@ -37,7 +38,7 @@ exports.submitBusinessTripRequest = async (req, res) => {
       req.cookies.EmpID,
       req.cookies.context.CompanyID
     );
-    res.json({ message: 'Business trip request submitted' });
+    res.json({ message: 'Business trip request submitted', reqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -50,7 +51,7 @@ exports.submitBusinessTripRequestOnBehalf = async (req, res) => {
     const file = req.file;
     const actorEmpID = req.body.EmpID;
     const CompanyID = req.cookies.context.CompanyID;
-    await businessTripService.submitBusinessTripRequestOnBehalf(
+    const reqID = await businessTripService.submitBusinessTripRequestOnBehalf(
       data,
       file?.buffer,
       file?.originalname,
@@ -59,7 +60,7 @@ exports.submitBusinessTripRequestOnBehalf = async (req, res) => {
       actorEmpID,
       CompanyID
     );
-    res.json({ message: 'Business trip request submitted on behalf' });
+    res.json({ message: 'Business trip request submitted on behalf', reqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -81,16 +82,15 @@ exports.draftSaveBusinessTripRequest = async (req, res) => {
   try {
     const data = req.body;
     const file = req.file;
-    await businessTripService.draftSaveBusinessTripRequest(
+    const reqID = await businessTripService.draftSaveBusinessTripRequest(
       data,
       file?.buffer,
       file?.originalname,
       file?.mimetype,
       file?.size,
-      req.cookies.EmpID,
       req.cookies.context.CompanyID
     );
-    res.json({ message: 'Business trip request draft saved' });
+    res.json({ message: 'Business trip request draft saved', reqID });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

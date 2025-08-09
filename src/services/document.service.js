@@ -1,6 +1,7 @@
 const sql = require('mssql');
 const dbConfig = require('../config/db.config');
 
+const { generateRequestId,generateAttachmentID } = require('../utils/ids');
 
 // Get document request by DocumentReqID (metadata only)
 async function getDocumentRequestDetails(DocumentReqID) {
@@ -19,14 +20,17 @@ async function submitDocumentRequest(data,EmpID,CompanyID) {
   // Determine manager for this employee
   let managerID = null;
   const mgrRes = await pool.request()
-    .input('EmpID', sql.VarChar(30), data.EmpID)
-    .query('SELECT managerID FROM EmpProfileTable WHERE empID = @EmpID');
-  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerID;
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .query('SELECT managerEmpID FROM EmpProfileTable WHERE empID = @EmpID');
+  if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerEmpID;
+
+  // Generate server-side Document Request ID
+  const documentReqID = generateRequestId();
 
   // Insert document request with approverEmpID
   await pool.request()
-    .input('DocumentReqID', sql.VarChar(30), data.DocumentReqID)
-    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('DocumentReqID', sql.VarChar(30), documentReqID)
+    .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('ReqDate', sql.Date, data.ReqDate || new Date())
     .input('Status', sql.VarChar(15), data.Status || 'Pending')
@@ -39,6 +43,40 @@ async function submitDocumentRequest(data,EmpID,CompanyID) {
       VALUES
       (@DocumentReqID, @EmpID, @CompanyID, @ReqDate, @Status, @approverEmpID, @Type, @Reason)
     `);
+  
+  // Log submission in timeline
+  const timelineID = generateAttachmentID();
+  await pool.request()
+    .input('timelineID', sql.VarChar(30), timelineID)
+    .input('reqID', sql.VarChar(30), documentReqID)
+    .input('action', sql.VarChar(50), 'Submitted')
+    .input('actorEmpID', sql.VarChar(30), EmpID)
+    .input('comments', sql.VarChar(500), data.Reason || null)
+    .input('actionDate', sql.DateTime, new Date())
+    .query(`
+      INSERT INTO RequestTimelineTable
+        (timelineID, reqID, action, actorEmpID, comments, actionDate)
+      VALUES
+        (@timelineID, @reqID, @action, @actorEmpID, @comments, @actionDate)
+    `);
+
+  // Log pending in timeline
+  const timelineID_1 = generateAttachmentID();
+  await pool.request()
+    .input('timelineID', sql.VarChar(30), timelineID_1)
+    .input('reqID', sql.VarChar(30), documentReqID)
+    .input('action', sql.VarChar(50), 'Pending')
+    .input('actorEmpID', sql.VarChar(30), managerID)
+    .input('comments', sql.VarChar(500), data.Reason || null)
+    .input('actionDate', sql.DateTime, new Date())
+    .query(`
+      INSERT INTO RequestTimelineTable
+        (timelineID, reqID, action, actorEmpID, comments, actionDate)
+      VALUES
+        (@timelineID, @reqID, @action, @actorEmpID, @comments, @actionDate)
+    `);
+
+  return documentReqID;
 }
 
 // Submit document request on behalf of another employee (just set EmpID as required)
@@ -63,9 +101,10 @@ async function editDocumentRequest(DocumentReqID, updateData) {
 // Draft save document request (Status='Draft')
 async function draftSaveDocumentRequest(data,EmpID,CompanyID) {
   const pool = await sql.connect(dbConfig);
+  const documentReqID = generateRequestId();
   await pool.request()
-    .input('DocumentReqID', sql.VarChar(30), data.DocumentReqID)
-    .input('EmpID', sql.VarChar(30), data.EmpID)
+    .input('DocumentReqID', sql.VarChar(30), documentReqID)
+    .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('ReqDate', sql.Date, data.ReqDate || new Date())
     .input('Status', sql.VarChar(15), 'Draft')
@@ -77,14 +116,15 @@ async function draftSaveDocumentRequest(data,EmpID,CompanyID) {
       VALUES
       (@DocumentReqID, @EmpID, @CompanyID, @ReqDate, @Status, @Type, @Reason)
     `);
+  return documentReqID;
 }
 
 // Change approval (status)
-async function changeDocumentApproval(DocumentReqID, approvalStatus) {
+async function changeDocumentApproval(DocumentReqID) {
   const pool = await sql.connect(dbConfig);
   await pool.request()
     .input('DocumentReqID', sql.VarChar(30), DocumentReqID)
-    .input('Status', sql.VarChar(15), approvalStatus)
+    .input('Status', sql.VarChar(15), 'Change request')
     .query('UPDATE DocumentReqTable SET Status=@Status WHERE documentReqID=@DocumentReqID');
 }
 
@@ -128,7 +168,7 @@ async function getPendingDocumentRequestDetails(DocumentReqID) {
 }
 
 // Delete document request by ID
-async function delegateDocumentApproval(DocumentReqID, newApproverEmpID, actorEmpID, comments = null) {
+async function delegateDocumentApproval(DocumentReqID, newApproverEmpID, comments = null) {
   const pool = await sql.connect(dbConfig);
   await pool.request()
     .input('DocumentReqID', sql.VarChar(30), DocumentReqID)
@@ -141,11 +181,11 @@ async function delegateDocumentApproval(DocumentReqID, newApproverEmpID, actorEm
       .input('timelineID', sql.VarChar(30), timelineID)
       .input('reqID', sql.VarChar(30), DocumentReqID)
       .input('action', sql.VarChar(50), 'Delegated')
-      .input('actorEmpID', sql.VarChar(30), actorEmpID)
+      .input('actorEmpID', sql.VarChar(30), newApproverEmpID)
       .input('comments', sql.VarChar(500), comments)
       .input('actionDate', sql.DateTime, new Date())
       .query(`
-        INSERT INTO ReqTimelineTable
+        INSERT INTO RequestTimelineTable
           (timelineID, reqID, action, actorEmpID, comments, actionDate)
         VALUES
           (@timelineID, @reqID, @action, @actorEmpID, @comments, @actionDate)

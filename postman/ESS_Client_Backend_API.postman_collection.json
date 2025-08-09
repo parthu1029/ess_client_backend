@@ -1,0 +1,245 @@
+{
+  "info": {
+    "name": "ESS Client Backend API",
+    "description": "Industrial-grade Postman collection for the ESS (Employee Self Service) backend.\n\nHighlights:\n- Cookie-based context: EmpID and CompanyID. The server normalizes cookies via `src/middlewares/normalizeCookies.js`.\n- Variables: `baseUrl`, `EmpID`, `CompanyID`, `reqid`, `tripid`.\n- Pre-request script auto-sets cookies in the Postman cookie jar for the active `baseUrl`.\n- Multi-tenant safety: All sensitive endpoints are scoped by `CompanyID`.\n- Environments: use the provided Local/Production template environments to switch base URL and cookie values.\n\nUsage:\n1) Import this collection and the appropriate environment (`ESS API - Local` or the Production Template).\n2) Ensure `EmpID` and `CompanyID` are set in your environment.\n3) Run requests. The collection's pre-request script will set the cookies for each request's host.\n4) For detail endpoints, set `reqid` (or `tripid`) in the environment, or use request-level params.\n\nNotes:\n- Some modules (Document, Notification, Team) contain known typos or route path issues in code (e.g., `document.routes.js` missing leading '/' for approve/reject; `notification.routes.js` uses 'broadcase' not 'broadcast'; `team.routes.js` path is 'getTeamHeirarchy'). This collection mirrors the current codebase to aid testing and discovery.\n- File upload fields: Reimbursement uses 'receipt'; BusinessTrip and Excuse use 'attachment'; Profile photo uses 'photo'.\n",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:3001", "type": "string" },
+    { "key": "EmpID", "value": "E001", "type": "string" },
+    { "key": "CompanyID", "value": "C001", "type": "string" },
+    { "key": "reqid", "value": "", "type": "string" },
+    { "key": "tripid", "value": "", "type": "string" }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Set cookies for EmpID and CompanyID before every request",
+          "const base = pm.environment.get('baseUrl') || pm.collectionVariables.get('baseUrl');",
+          "const emp = pm.environment.get('EmpID') || pm.collectionVariables.get('EmpID');",
+          "const comp = pm.environment.get('CompanyID') || pm.collectionVariables.get('CompanyID');",
+          "const jar = pm.cookies.jar();",
+          "if (base && emp) { jar.set(base, 'EmpID', String(emp), function (err) { if (err) console.warn('Failed to set EmpID cookie:', err); }); }",
+          "if (base && comp) { jar.set(base, 'CompanyID', String(comp), function (err) { if (err) console.warn('Failed to set CompanyID cookie:', err); }); }",
+          "// Also set Context as JSON cookie so server sees req.cookies.Context.CompanyID (cookie-parser 'j:' prefix)",
+          "if (base && comp) { const ctx = 'j:' + JSON.stringify({ CompanyID: String(comp) }); jar.set(base, 'Context', ctx, function (err) { if (err) console.warn('Failed to set Context cookie:', err); }); }"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Opportunistically capture request IDs from responses for chaining",
+          "let data = {}; try { data = pm.response.json(); } catch (e) {}",
+          "const keys = ['ReimbursementID','ReqID','requestId','tripId','LeaveID','DocumentID','ExcuseID','BusinessTripID','FlightTicketID'];",
+          "for (const k of keys) { if (data && data[k]) { pm.environment.set('reqid', String(data[k])); pm.environment.set('tripid', String(data[k])); } }"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "Profile",
+      "description": "Endpoints under /api/profile",
+      "item": [
+        {"name":"Get Profile","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/profile/getProfile"}},
+        {"name":"Update Profile","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Name\": \"John Doe\",\n  \"DOB\": \"1990-01-01\",\n  \"Grade\": \"G5\"\n}"},"url":"{{baseUrl}}/api/profile/updateProfile"}},
+        {"name":"Upload Photo","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[{"key":"photo","type":"file","src":""}]},"url":"{{baseUrl}}/api/profile/uploadPhoto"}},
+        {"name":"Get Photo","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/profile/getPhoto"}},
+        {"name":"Delete Photo","request":{"method":"DELETE","header":[],"url":"{{baseUrl}}/api/profile/deletePhoto"}},
+        {"name":"Get Employment Summary","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/profile/getEmploymentSummary"}},
+        {"name":"Get Personal Info","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/profile/getPersonalInfo"}},
+        {"name":"Update Personal Info","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"DOB\": \"1990-01-01\",\n  \"Address\": \"...\"\n}"},"url":"{{baseUrl}}/api/profile/updatePersonalInfo"}},
+        {"name":"Get Contact Info","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/profile/getContactInfo"}},
+        {"name":"Update Contact Info","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"contact\": \"+1 555-0100\",\n  \"email\": \"user@example.com\",\n  \"address\": \"...\"\n}"},"url":"{{baseUrl}}/api/profile/updateContactInfo"}},
+        {"name":"Get Profile Summary","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/profile/getProfileSummary"}},
+        {"name":"Get Calendar","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/profile/getCalendar"}}
+      ]
+    },
+    {
+      "name": "Attendance",
+      "item": [
+        {"name":"Mark Attendance","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"type\": \"checkin\"\n}"},"url":"{{baseUrl}}/api/attendance/markAttendance"}},
+        {"name":"Get Checkin/Checkout History","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/attendance/getCheckinCheckoutHistory"}}
+      ]
+    },
+    {
+      "name": "BusinessTrip",
+      "item": [
+        {"name":"Get Business Trip Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/businessTrip/getBusinessTripRequestDetails"}},
+        {"name":"Get Business Trip Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/businessTrip/getBusinessTripTransactions"}},
+        {"name":"Submit Business Trip Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"Destination","type":"text","value":"City"},
+          {"key":"StartDate","type":"text","value":"2025-08-10"},
+          {"key":"EndDate","type":"text","value":"2025-08-12"},
+          {"key":"Purpose","type":"text","value":"Client meeting"}
+        ]},"url":"{{baseUrl}}/api/businessTrip/submitBusinessTripRequest"}},
+        {"name":"Submit Business Trip Request On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"Destination","type":"text","value":"City"}
+        ]},"url":"{{baseUrl}}/api/businessTrip/submitBusinessTripRequestOnBehalf"}},
+        {"name":"Edit Business Trip Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"tripId\": \"{{reqid}}\",\n  \"Purpose\": \"Updated purpose\"\n}"},"url":"{{baseUrl}}/api/businessTrip/editBusinessTripRequest"}},
+        {"name":"Draft Save Business Trip Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"Destination","type":"text","value":"City"}
+        ]},"url":"{{baseUrl}}/api/businessTrip/draftSaveBusinessTripRequest"}},
+        {"name":"Delegate Business Trip Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\",\n  \"comments\": \"Please handle\"\n}"},"url":"{{baseUrl}}/api/businessTrip/delegateBusinessTripRequest"}},
+        {"name":"Change Business Trip Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"tripId\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/businessTrip/changeBusinessTripApproval"}},
+        {"name":"Approve/Reject Business Trip Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"tripId\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Looks good\"\n}"},"url":"{{baseUrl}}/api/businessTrip/approveRejectBusinessTripRequest"}},
+        {"name":"Get Pending Business Trip Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/businessTrip/getPendingBusinessTripRequests"}},
+        {"name":"Get Pending Business Trip Request Details","request":{"method":"GET","header":[{"key":"tripid","value":"{{tripid}}"}],"url":"{{baseUrl}}/api/businessTrip/getPendingBusinessTripRequestDetails"}}
+      ]
+    },
+    {
+      "name": "Document",
+      "item": [
+        {"name":"Delete Document","request":{"method":"DELETE","header":[],"url":"{{baseUrl}}/api/document/deleteDocument"}},
+        {"name":"Get Document Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/document/getDocumentTransactions"}},
+        {"name":"Get Document Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/document/getDocumentRequestDetails"}},
+        {"name":"Submit Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\",\n  \"Description\": \"\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequest"}},
+        {"name":"Submit Document Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"EmpID\": \"{{EmpID}}\",\n  \"Type\": \"NOC\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequestOnBehalf"}},
+        {"name":"Edit Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"Description\": \"Updated\"\n}"},"url":"{{baseUrl}}/api/document/editDocumentRequest"}},
+        {"name":"Draft Save Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\"\n}"},"url":"{{baseUrl}}/api/document/draftSaveDocumentRequest"}},
+        {"name":"Delegate Document Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/document/delegateDocumentApproval"}},
+        {"name":"Change Document Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/document/changeDocumentApproval"}},
+        {"name":"Approve/Reject Document Request (route path bug in code)","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/documentapproveRejectDocumentRequest"}}
+      ]
+    },
+    {
+      "name": "Excuse",
+      "item": [
+        {"name":"Submit Excuse Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"Date","type":"text","value":"2025-08-10"},
+          {"key":"Reason","type":"text","value":"Medical"}
+        ]},"url":"{{baseUrl}}/api/excuse/submitExcuseRequest"}},
+        {"name":"Submit Excuse On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"EmpID","type":"text","value":"{{EmpID}}"}
+        ]},"url":"{{baseUrl}}/api/excuse/submitExcuseOnBehalf"}},
+        {"name":"Get Excuse Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getExcuseTransactions"}},
+        {"name":"Get Excuse Types","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getExcuseTypes"}},
+        {"name":"Get Excuse Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getExcuseRequestDetails"}},
+        {"name":"Get Pending Excuse Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequests"}},
+        {"name":"Get Pending Excuse Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequestDetails"}},
+        {"name":"Approve/Reject Excuse Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/excuse/approveRejectExcuseRequest"}},
+        {"name":"Change Excuse Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/excuse/changeExcuseApproval"}},
+        {"name":"Delegate Excuse Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/excuse/delegateExcuseApproval"}}
+      ]
+    },
+    {
+      "name": "FlightTicket",
+      "item": [
+        {"name":"Get Flight Ticket Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/flightTicket/getFlightTicketRequestDetails"}},
+        {"name":"Get Flight Ticket Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/flightTicket/getFlightTicketTransactions"}},
+        {"name":"Submit Flight Ticket Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"From\": \"LAX\",\n  \"To\": \"SFO\",\n  \"Date\": \"2025-08-10\"\n}"},"url":"{{baseUrl}}/api/flightTicket/submitFlightTicketRequest"}},
+        {"name":"Submit Flight Ticket Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"EmpID\": \"{{EmpID}}\",\n  \"From\": \"LAX\",\n  \"To\": \"SFO\"\n}"},"url":"{{baseUrl}}/api/flightTicket/submitFlightTicketRequestOnBehalf"}},
+        {"name":"Edit Flight Ticket Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"SeatPref\": \"Window\"\n}"},"url":"{{baseUrl}}/api/flightTicket/editFlightTicketRequest"}},
+        {"name":"Draft Save Flight Ticket Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"From\": \"LAX\",\n  \"To\": \"SFO\"\n}"},"url":"{{baseUrl}}/api/flightTicket/draftSaveFlightTicketRequest"}},
+        {"name":"Delegate Flight Ticket Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/flightTicket/delegateFlightTicketApproval"}},
+        {"name":"Change Flight Ticket Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"approvalStatus\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/flightTicket/changeFlightTicketApproval"}},
+        {"name":"Approve/Reject Flight Ticket Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Approved\"\n}"},"url":"{{baseUrl}}/api/flightTicket/approveRejectFlightTicketRequest"}},
+        {"name":"Get Pending Flight Ticket Requests Details","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/flightTicket/getPendingFlightTicketRequestsDetails?requestId={{reqid}}"}},
+        {"name":"Get Pending Flight Ticket Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/flightTicket/getPendingFlightTicketRequests"}}
+      ]
+    },
+    {
+      "name": "Leave",
+      "item": [
+        {"name":"Apply Leave","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"Annual\",\n  \"From\": \"2025-08-10\",\n  \"To\": \"2025-08-12\"\n}"},"url":"{{baseUrl}}/api/leave/applyLeave"}},
+        {"name":"Get Leave Balance","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveBalance"}},
+        {"name":"Get Leave History","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveHistory"}},
+        {"name":"Get Leave Types","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveTypes"}},
+        {"name":"Get Leave Status","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveStatus"}},
+        {"name":"Cancel Leave","request":{"method":"DELETE","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/cancelLeave"}},
+        {"name":"Approve/Reject Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeave"}},
+        {"name":"Get Pending Leaves","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getPendingLeaves"}},
+        {"name":"Get Leaves By Id","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getLeavesById"}},
+        {"name":"Update Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/updatedLeave"}},
+        {"name":"Get Leave Request Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveRequestTransactions"}},
+        {"name":"Get Leave Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getLeaveRequestDetails"}},
+        {"name":"Submit Leave","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"Annual\",\n  \"From\": \"2025-08-10\",\n  \"To\": \"2025-08-12\"\n}"},"url":"{{baseUrl}}/api/leave/submitLeave"}},
+        {"name":"Submit Leave On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"EmpID\": \"{{EmpID}}\",\n  \"Type\": \"Annual\"\n}"},"url":"{{baseUrl}}/api/leave/submitLeaveOnBehalf"}},
+        {"name":"Edit Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/editLeaveRequest"}},
+        {"name":"Draft Save Leave Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"Annual\"\n}"},"url":"{{baseUrl}}/api/leave/draftSaveLeaveRequest"}},
+        {"name":"Get Pending Leave Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getPendingLeaveRequestDetails"}},
+        {"name":"Approve/Reject Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeaveRequest"}},
+        {"name":"Change Leave Request Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/changeLeaveRequestApproval"}},
+        {"name":"Get Delegates","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getDelegates"}},
+        {"name":"Delegate Leave Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/leave/delegateLeaveApproval"}}
+      ]
+    },
+    {
+      "name": "Manager",
+      "item": [
+        {"name":"Bulk Approve/Reject","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"items\": [{ \"ReqID\": \"{{reqid}}\", \"action\": \"approve\" }]\n}"},"url":"{{baseUrl}}/api/manager/bulk-approve-reject"}},
+        {"name":"Get Team Attendance Summary","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/manager/getTeamAttendanceSummary"}}
+      ]
+    },
+    {
+      "name": "Notification",
+      "item": [
+        {"name":"Get Notifications","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/notification/getNotifications"}},
+        {"name":"Create Notification","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"title\": \"System Update\",\n  \"message\": \"Planned maintenance\"\n}"},"url":"{{baseUrl}}/api/notification/createNotification"}},
+        {"name":"Broadcast Notification (typo in route)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"message\": \"Hello team\"\n}"},"url":"{{baseUrl}}/api/notification/broadcaseNotification"}}
+      ]
+    },
+    {
+      "name": "Payroll",
+      "item": [
+        {"name":"Get Payslip","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/payroll/payslip"}},
+        {"name":"Get Payslip History","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/payroll/getPayslipHistory"}},
+        {"name":"Get Payroll Summary","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/payroll/getPayrollSummary"}}
+      ]
+    },
+    {
+      "name": "Reimbursement",
+      "item": [
+        {"name":"Get Reimbursement Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/reimbursement/getReimbursementTransactions"}},
+        {"name":"Get Reimbursement Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/reimbursement/getReimbursementRequestDetails"}},
+        {"name":"Submit Reimbursement Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"receipt","type":"file","src":""},
+          {"key":"Amount","type":"text","value":"100.00"},
+          {"key":"TypeID","type":"text","value":"1"},
+          {"key":"Purpose","type":"text","value":"Taxi"}
+        ]},"url":"{{baseUrl}}/api/reimbursement/submitReimbursementRequest"}},
+        {"name":"Submit Reimbursement Request On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"receipt","type":"file","src":""},
+          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"Amount","type":"text","value":"100.00"}
+        ]},"url":"{{baseUrl}}/api/reimbursement/submitReimbursementRequestOnBehalf"}},
+        {"name":"Edit Reimbursement Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\",\n  \"Purpose\": \"Updated taxi\"\n}"},"url":"{{baseUrl}}/api/reimbursement/editReimbursementRequest"}},
+        {"name":"Draft Save Reimbursement Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"receipt","type":"file","src":""},
+          {"key":"Amount","type":"text","value":"100.00"}
+        ]},"url":"{{baseUrl}}/api/reimbursement/draftSaveReimbursementRequest"}},
+        {"name":"Delegate Reimbursement Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/reimbursement/delegateReimbursementRequest"}},
+        {"name":"Change Reimbursement Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/reimbursement/changeReimbursementApproval"}},
+        {"name":"Approve/Reject Reimbursement Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/reimbursement/approveRejectReimbursementRequest"}},
+        {"name":"Get Pending Reimbursement Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/reimbursement/getPendingReimbursementRequests"}},
+        {"name":"Get Pending Reimbursement Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/reimbursement/getPendingReimbursementRequestDetails"}}
+      ]
+    },
+    {
+      "name": "Request",
+      "item": [
+        {"name":"Get Request Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/request/getRequestTransactions"}},
+        {"name":"Get Request Timeline","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/request/getRequestTimeline"}}
+      ]
+    },
+    {
+      "name": "Team",
+      "item": [
+        {"name":"Get Team Heirarchy (typo)","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/team/getTeamHeirarchy"}},
+        {"name":"Get Team Calendar","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/team/getTeamCalendar"}}
+      ]
+    }
+  ]
+}

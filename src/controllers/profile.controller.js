@@ -21,7 +21,8 @@ exports.updateProfile = async (req, res) => {
 exports.uploadPhoto = async (req, res) => {
   try {
     const photo = req.file.buffer;
-    await profileService.uploadPhoto(req.cookies.EmpID, photo);
+    console.log(photo);
+    await profileService.uploadPhoto(req.cookies.EmpID, req.cookies.Context.CompanyID, photo);
     res.json({ message: "Photo uploaded successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -30,7 +31,7 @@ exports.uploadPhoto = async (req, res) => {
 
 exports.getPhoto = async (req, res) => {
   try {
-    const photo = await profileService.getPhoto(req.cookies.EmpID);
+    const photo = await profileService.getPhoto(req.cookies.EmpID, req.cookies.Context.CompanyID);
     if (photo) {
       res.contentType('image/jpeg').send(photo);
     } else {
@@ -43,7 +44,7 @@ exports.getPhoto = async (req, res) => {
 
 exports.deletePhoto = async (req, res) => {
   try {
-    await profileService.deletePhoto(req.cookies.EmpID);
+    await profileService.deletePhoto(req.cookies.EmpID, req.cookies.Context.CompanyID);
     res.json({ message: "Photo deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,11 +1,12 @@
 const sql = require('mssql');
 const dbConfig = require('../config/db.config');
 
-async function getProfile(EmpID) {
+async function getProfile(EmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
   const result = await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
-    .query('SELECT * FROM EmpProfileTable WHERE EmpID=@EmpID');
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .query('SELECT * FROM EmpProfileTable WHERE EmpID=@EmpID AND CompanyID=@CompanyID');
   return result.recordset[0];
 }
 
@@ -23,11 +24,20 @@ async function updateProfile(EmpID, CompanyID, profileData) {
 
 async function uploadPhoto(EmpID, CompanyID, photo) {
   const pool = await sql.connect(dbConfig);
+  console.log(photo);
   await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('photo', sql.VarBinary(sql.MAX), photo)
-    .query('UPDATE EmpProfilePhotoTable SET photo=@photo WHERE EmpID=@EmpID AND CompanyID=@CompanyID');
+    .query(`MERGE INTO EmpProfilePhotoTable AS target
+            USING (SELECT @EmpID AS EmpID, @CompanyID AS CompanyID, @photo AS photo) AS source
+            ON target.EmpID = source.EmpID AND target.CompanyID = source.CompanyID
+            WHEN MATCHED THEN
+                UPDATE SET target.photo = source.photo
+            WHEN NOT MATCHED THEN
+                INSERT (EmpID, CompanyID, photo)
+                VALUES (source.EmpID, source.CompanyID, source.photo);
+            `);
 }
 
 async function getPhoto(EmpID, CompanyID) {
@@ -65,14 +75,14 @@ async function getPersonalInfo(EmpID, CompanyID) {
   return result.recordset[0];
 }
 
-async function updatePersonalInfo(EmpID, personalInfo, CompanyID) {
+async function updatePersonalInfo(EmpID, CompanyID, personalInfo) {
   const pool = await sql.connect(dbConfig);
   await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
+    .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('Name', sql.VarChar(100), personalInfo.Name)
     .input('DOB', sql.Date, personalInfo.DOB)
-    .input('CompanyID', sql.VarChar(30), CompanyID)
-    .query('UPDATE EmpProfileTable SET Name=@Name, DOB=@DOB WHERE EmpID=@EmpID');
+    .query(`UPDATE EmpProfileTable SET Name=@Name, DOB=@DOB WHERE EmpID=@EmpID AND CompanyID=@CompanyID`);
 }
 
 async function getContactInfo(EmpID, CompanyID) {
@@ -84,14 +94,14 @@ async function getContactInfo(EmpID, CompanyID) {
   return result.recordset[0];
 }
 
-async function updateContactInfo(EmpID, contactInfo, CompanyID) {
+async function updateContactInfo(EmpID, CompanyID, contactInfo) {
   const pool = await sql.connect(dbConfig);
   await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
+    .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('contact', sql.VarChar(15), contactInfo.contact)
     .input('email', sql.VarChar(50), contactInfo.email)
     .input('address', sql.VarChar(100), contactInfo.address)
-    .input('CompanyID', sql.VarChar(30), CompanyID)
     .query('UPDATE EmpProfileTable SET contact=@contact, email=@email, address=@address WHERE EmpID=@EmpID AND CompanyID=@CompanyID');
 }
 
