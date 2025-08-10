@@ -7,18 +7,15 @@ exports.applyLeave = async (req, res) => {
       req.body,
       req.file?.buffer,
       req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size
     );
     res.json({ message: "Leave request submitted", LeaveReqID: result });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-};
-
-// Get leave balance (not in ERD; just a stub)
-exports.getLeaveBalance = async (req, res) => {
-  // No table for balance in your ERD - return placeholder
-  res.json({ error: "Leave balance feature not present in current schema." });
 };
 
 // Get leave history for an employee
@@ -39,16 +36,6 @@ exports.getLeaveTypes = async (req, res) => {
   try {
     const types = await leaveService.getLeaveTypes();
     res.json(types);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
-// Get status for a specific leave request
-exports.getLeaveStatus = async (req, res) => {
-  try {
-    const result = await leaveService.getLeaveStatus(req.headers['leavereqid']);
-    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -127,7 +114,22 @@ exports.getLeaveRequestDetails = async (req, res) => {
 
 // Synonyms for submit/apply
 exports.submitLeave = exports.applyLeave;
-exports.submitLeaveOnBehalf = exports.applyLeave;
+exports.submitLeaveOnBehalf = async (req, res) => {
+  try {
+    const result = await leaveService.applyLeave(
+      req.body,
+      req.file?.buffer,
+      req.body.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size
+    );
+    res.json({ message: "Leave request submitted", LeaveReqID: result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 // Edit a request
 exports.editLeaveRequest = async (req, res) => {
@@ -146,7 +148,10 @@ exports.draftSaveLeaveRequest = async (req, res) => {
       req.body,
       req.file?.buffer,
       req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size
     );
     res.json({ message: "Leave draft saved", LeaveReqID });
   } catch (err) {
@@ -182,15 +187,11 @@ exports.changeLeaveRequestApproval = async (req, res) => {
   }
 };
 
-// Delegates: not in ERD, so return empty
-exports.getDelegates = async (req, res) => {
-  res.json([]);
-};
 // Delegate leave approval
 exports.delegateLeaveApproval = async (req, res) => {
   try {
-    const { requestId, newApproverEmpID } = req.body;
-    await leaveService.delegateLeaveApproval(requestId, newApproverEmpID);
+    const { requestID, newApproverEmpID, Comment } = req.body;
+    await leaveService.delegateLeaveApproval(requestID, newApproverEmpID, Comment);
     res.json({ message: 'Leave approval delegated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

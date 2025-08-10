@@ -286,7 +286,8 @@ Base URL: `/api/businessTrip`
 - Response (200):
 ```json
 {
-  "message": "Business trip request submitted"
+  "message": "Business trip request submitted",
+  "reqID": "JEZ909O08N"
 }
 ```
 
@@ -303,7 +304,8 @@ Base URL: `/api/businessTrip`
 - Response (200):
 ```json
 {
-  "message": "Business trip request submitted on behalf"
+  "message": "Business trip request submitted on behalf",
+  "reqID": "JEZ909O08N"
 }
 ```
 
@@ -337,7 +339,8 @@ Base URL: `/api/businessTrip`
 - Response (200):
 ```json
 {
-  "message": "Business trip request draft saved"
+  "message": "Business trip request draft saved",
+  "reqID": "JEZ909O08N"
 }
 ```
 
@@ -367,8 +370,7 @@ Base URL: `/api/businessTrip`
 - Request Body (application/json):
 ```json
 {
-  "tripId": "JEZ909O08N",
-  "approvalStatus": "Approved"
+  "tripId": "JEZ909O08N"
 }
 ```
 - Response (200):
@@ -436,6 +438,141 @@ Base URL: `/api/businessTrip`
   "status": "Pending"
 }
 ```
+
+---
+
+## Leave
+Base URL: `/api/leave`
+
+### POST /applyLeave
+- Cookies:
+  - `EmpID` (string)
+  - `CompanyID` (string) or `Context.CompanyID`
+- Request Body (multipart/form-data):
+  - Text fields:
+    - `FromDate` (YYYY-MM-DD)
+    - `ToDate` (YYYY-MM-DD)
+    - `Type` (string)
+    - `Description` (string, optional)
+  - File field:
+    - `attachment` (file, JPEG/PNG/PDF up to 30MB)
+- Response (200):
+```json
+{
+  "message": "Leave request submitted",
+  "LeaveReqID": "LVRQ123456"
+}
+```
+
+### POST /submitLeave
+- Same as `POST /applyLeave` (alias).
+
+### POST /submitLeaveOnBehalf
+- Cookies: `EmpID` (actor), `CompanyID`
+- Body: same as apply, plus `EmpID` (target employee)
+- Response (200): `{ message, LeaveReqID }`
+
+### POST /draftSaveLeaveRequest
+- Cookies: `EmpID`, `CompanyID`
+- Body: same as apply (multipart/form-data)
+- Response (200):
+```json
+{
+  "message": "Leave draft saved",
+  "LeaveReqID": "LVRQ123456"
+}
+```
+
+### GET /getLeaveRequestDetails
+- Cookies: `EmpID`, `CompanyID`
+- Response: Array of leave requests for the employee
+
+### GET /getPendingLeaveRequestDetails
+- Cookies: `EmpID`, `CompanyID`
+- Headers: `leavereqid` (string)
+- Response: Detailed object for the specified request
+
+### DELETE /cancelLeave
+- Headers: `leavereqid` (string)
+- Response: `{ message: "Leave cancelled" }`
+
+### PATCH /editLeaveRequest
+- Body: `{ LeaveReqID, ...fieldsToUpdate }`
+- Response: `{ message: "Leave request edited" }`
+
+### PATCH /approveRejectLeaveRequest
+- Body: `{ LeaveReqID, action }` where action is `approve` or `reject`
+- Response: `{ message: "Leave approved/rejected" }`
+
+### POST /delegateLeaveApproval
+- Body: `{ requestID, newApproverEmpID, Comment }`
+- Response: `{ message: "Leave approval delegated successfully" }`
+
+Other endpoints:
+- `GET /getLeaveHistory`, `GET /getLeaveTypes`, `GET /getPendingLeaves`, `PUT /updatedLeave`, `GET /getLeavesById`, `GET /getLeaveRequestTransactions` (returns empty array)
+
+---
+
+## Excuse
+Base URL: `/api/excuse`
+
+### POST /submitExcuseRequest
+- Cookies:
+  - `EmpID` (string)
+  - `CompanyID` (string) or `Context.CompanyID`
+- Request Body (multipart/form-data):
+  - Text fields:
+    - `Date` (YYYY-MM-DD)
+    - `From` (HH:mm)
+    - `To` (HH:mm)
+    - `Reason` (string)
+  - File field:
+    - `attachment` (file, JPEG/PNG/PDF up to 30MB)
+- Response (200):
+```json
+{
+  "message": "Excuse submitted successfully",
+  "ExcuseReqID": "EXQ123456"
+}
+```
+
+### POST /submitExcuseOnBehalf
+- Cookies: `EmpID` (actor), `CompanyID`
+- Body: same as submit, plus `EmpID` (target employee)
+- Response (200): `{ message, ExcuseReqID }`
+
+### POST /draftSaveExcuseRequest
+- Cookies: `EmpID`, `CompanyID`
+- Body: same as submit (multipart/form-data)
+- Response (200): `{ message: "Excuse request draft saved", ExcuseReqID }`
+
+### GET /getExcuseTransactions
+- Cookies: `EmpID`, `CompanyID`
+- Response: Array of timeline events
+
+### GET /getExcuseRequestDetails
+- Headers: `requestid` (string)
+- Response: Detailed excuse request object
+
+### GET /getPendingExcuseRequests
+- Cookies: `EmpID`, `CompanyID`
+- Response: Array of pending requests to approve
+
+### GET /getPendingExcuseRequestDetails
+- Headers: `requestid` (string)
+- Response: Detailed info for a pending request
+
+### PATCH /approveRejectExcuseRequest
+- Body: `{ requestId, action, comments }`
+- Response: `{ message: "Excuse request approved/rejected" }`
+
+### PATCH /changeExcuseApproval
+- Body: `{ requestId, approvalStatus }`
+- Response: `{ message: "Excuse approval status changed" }`
+
+### POST /delegateExcuseApproval
+- Body: `{ requestId, newApproverEmpID }`
+- Response: `{ message: "Excuse approval delegated" }`
 
 ---
 

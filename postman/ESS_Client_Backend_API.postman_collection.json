@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "ESS Client Backend API",
-    "description": "Industrial-grade Postman collection for the ESS (Employee Self Service) backend.\n\nHighlights:\n- Cookie-based context: EmpID and CompanyID. The server normalizes cookies via `src/middlewares/normalizeCookies.js`.\n- Variables: `baseUrl`, `EmpID`, `CompanyID`, `reqid`, `tripid`.\n- Pre-request script auto-sets cookies in the Postman cookie jar for the active `baseUrl`.\n- Multi-tenant safety: All sensitive endpoints are scoped by `CompanyID`.\n- Environments: use the provided Local/Production template environments to switch base URL and cookie values.\n\nUsage:\n1) Import this collection and the appropriate environment (`ESS API - Local` or the Production Template).\n2) Ensure `EmpID` and `CompanyID` are set in your environment.\n3) Run requests. The collection's pre-request script will set the cookies for each request's host.\n4) For detail endpoints, set `reqid` (or `tripid`) in the environment, or use request-level params.\n\nNotes:\n- Some modules (Document, Notification, Team) contain known typos or route path issues in code (e.g., `document.routes.js` missing leading '/' for approve/reject; `notification.routes.js` uses 'broadcase' not 'broadcast'; `team.routes.js` path is 'getTeamHeirarchy'). This collection mirrors the current codebase to aid testing and discovery.\n- File upload fields: Reimbursement uses 'receipt'; BusinessTrip and Excuse use 'attachment'; Profile photo uses 'photo'.\n",
+    "description": "Industrial-grade Postman collection for the ESS (Employee Self Service) backend.\n\nHighlights:\n- Cookie-based context: EmpID and CompanyID. The server normalizes cookies via `src/middlewares/normalizeCookies.js`.\n- Variables: `baseUrl`, `EmpID`, `CompanyID`, `reqid`, `tripid`.\n- Pre-request script auto-sets cookies in the Postman cookie jar for the active `baseUrl`.\n- Multi-tenant safety: All sensitive endpoints are scoped by `CompanyID`.\n- Environments: use the provided Local/Production template environments to switch base URL and cookie values.\n\nUsage:\n1) Import this collection and the appropriate environment (`ESS API - Local` or the Production Template).\n2) Ensure `EmpID` and `CompanyID` are set in your environment.\n3) Run requests. The collection's pre-request script will set the cookies for each request's host.\n4) For detail endpoints, set `reqid` (or `tripid`) in the environment, or use request-level params.\n\nNotes:\n- Some modules (Document, Notification, Team) contain known typos or route path issues in code (e.g., `document.routes.js` missing leading '/' for approve/reject; `notification.routes.js` uses 'broadcase' not 'broadcast'; `team.routes.js` path is 'getTeamHeirarchy'). This collection mirrors the current codebase to aid testing and discovery.\n- File upload fields: Reimbursement uses 'receipt'; Leave, BusinessTrip and Excuse use 'attachment'; Profile photo uses 'photo'.\n",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -36,7 +36,7 @@
         "exec": [
           "// Opportunistically capture request IDs from responses for chaining",
           "let data = {}; try { data = pm.response.json(); } catch (e) {}",
-          "const keys = ['ReimbursementID','ReqID','requestId','tripId','LeaveID','DocumentID','ExcuseID','BusinessTripID','FlightTicketID'];",
+          "const keys = ['ReimbursementID','ReqID','requestId','requestID','tripId','LeaveReqID','LeaveID','DocumentID','ExcuseReqID','ExcuseID','BusinessTripID','FlightTicketID'];",
           "for (const k of keys) { if (data && data[k]) { pm.environment.set('reqid', String(data[k])); pm.environment.set('tripid', String(data[k])); } }"
         ]
       }
@@ -118,20 +118,33 @@
         {"name":"Submit Excuse Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
           {"key":"Date","type":"text","value":"2025-08-10"},
+          {"key":"From","type":"text","value":"09:00"},
+          {"key":"To","type":"text","value":"10:30"},
           {"key":"Reason","type":"text","value":"Medical"}
         ]},"url":"{{baseUrl}}/api/excuse/submitExcuseRequest"}},
         {"name":"Submit Excuse On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
-          {"key":"EmpID","type":"text","value":"{{EmpID}}"}
+          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"Date","type":"text","value":"2025-08-10"},
+          {"key":"From","type":"text","value":"09:00"},
+          {"key":"To","type":"text","value":"10:30"},
+          {"key":"Reason","type":"text","value":"Medical"}
         ]},"url":"{{baseUrl}}/api/excuse/submitExcuseOnBehalf"}},
+        {"name":"Draft Save Excuse Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"Date","type":"text","value":"2025-08-10"},
+          {"key":"From","type":"text","value":"09:00"},
+          {"key":"To","type":"text","value":"10:30"},
+          {"key":"Reason","type":"text","value":"Medical"}
+        ]},"url":"{{baseUrl}}/api/excuse/draftSaveExcuseRequest"}},
         {"name":"Get Excuse Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getExcuseTransactions"}},
         {"name":"Get Excuse Types","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getExcuseTypes"}},
-        {"name":"Get Excuse Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getExcuseRequestDetails"}},
+        {"name":"Get Excuse Request Details","request":{"method":"GET","header":[{"key":"requestid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getExcuseRequestDetails"}},
         {"name":"Get Pending Excuse Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequests"}},
-        {"name":"Get Pending Excuse Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequestDetails"}},
-        {"name":"Approve/Reject Excuse Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/excuse/approveRejectExcuseRequest"}},
-        {"name":"Change Excuse Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/excuse/changeExcuseApproval"}},
-        {"name":"Delegate Excuse Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/excuse/delegateExcuseApproval"}}
+        {"name":"Get Pending Excuse Request Details","request":{"method":"GET","header":[{"key":"requestid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequestDetails"}},
+        {"name":"Approve/Reject Excuse Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Approved\"\n}"},"url":"{{baseUrl}}/api/excuse/approveRejectExcuseRequest"}},
+        {"name":"Change Excuse Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"approvalStatus\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/excuse/changeExcuseApproval"}},
+        {"name":"Delegate Excuse Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/excuse/delegateExcuseApproval"}}
       ]
     },
     {
@@ -153,27 +166,49 @@
     {
       "name": "Leave",
       "item": [
-        {"name":"Apply Leave","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"Annual\",\n  \"From\": \"2025-08-10\",\n  \"To\": \"2025-08-12\"\n}"},"url":"{{baseUrl}}/api/leave/applyLeave"}},
-        {"name":"Get Leave Balance","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveBalance"}},
+        {"name":"Apply Leave","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"FromDate","type":"text","value":"2025-08-10"},
+          {"key":"ToDate","type":"text","value":"2025-08-12"},
+          {"key":"Type","type":"text","value":"Annual"},
+          {"key":"Description","type":"text","value":"Family trip"}
+        ]},"url":"{{baseUrl}}/api/leave/applyLeave"}},
         {"name":"Get Leave History","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveHistory"}},
         {"name":"Get Leave Types","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveTypes"}},
-        {"name":"Get Leave Status","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveStatus"}},
-        {"name":"Cancel Leave","request":{"method":"DELETE","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/cancelLeave"}},
-        {"name":"Approve/Reject Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeave"}},
+        {"name":"Cancel Leave","request":{"method":"DELETE","header":[{"key":"leavereqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/cancelLeave"}},
+        {"name":"Approve/Reject Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeave"}},
         {"name":"Get Pending Leaves","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getPendingLeaves"}},
-        {"name":"Get Leaves By Id","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getLeavesById"}},
-        {"name":"Update Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/updatedLeave"}},
+        {"name":"Get Leaves By Id","request":{"method":"GET","header":[{"key":"leavereqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getLeavesById"}},
+        {"name":"Update Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"Description\": \"Updated reason\"\n}"},"url":"{{baseUrl}}/api/leave/updatedLeave"}},
         {"name":"Get Leave Request Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveRequestTransactions"}},
-        {"name":"Get Leave Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getLeaveRequestDetails"}},
-        {"name":"Submit Leave","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"Annual\",\n  \"From\": \"2025-08-10\",\n  \"To\": \"2025-08-12\"\n}"},"url":"{{baseUrl}}/api/leave/submitLeave"}},
-        {"name":"Submit Leave On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"EmpID\": \"{{EmpID}}\",\n  \"Type\": \"Annual\"\n}"},"url":"{{baseUrl}}/api/leave/submitLeaveOnBehalf"}},
-        {"name":"Edit Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/editLeaveRequest"}},
-        {"name":"Draft Save Leave Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"Annual\"\n}"},"url":"{{baseUrl}}/api/leave/draftSaveLeaveRequest"}},
-        {"name":"Get Pending Leave Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getPendingLeaveRequestDetails"}},
-        {"name":"Approve/Reject Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeaveRequest"}},
-        {"name":"Change Leave Request Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/leave/changeLeaveRequestApproval"}},
-        {"name":"Get Delegates","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getDelegates"}},
-        {"name":"Delegate Leave Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/leave/delegateLeaveApproval"}}
+        {"name":"Get Leave Request Details","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveRequestDetails"}},
+        {"name":"Submit Leave","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"FromDate","type":"text","value":"2025-08-10"},
+          {"key":"ToDate","type":"text","value":"2025-08-12"},
+          {"key":"Type","type":"text","value":"Annual"},
+          {"key":"Description","type":"text","value":"Family trip"}
+        ]},"url":"{{baseUrl}}/api/leave/submitLeave"}},
+        {"name":"Submit Leave On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"FromDate","type":"text","value":"2025-08-10"},
+          {"key":"ToDate","type":"text","value":"2025-08-12"},
+          {"key":"Type","type":"text","value":"Annual"},
+          {"key":"Description","type":"text","value":"Family trip"}
+        ]},"url":"{{baseUrl}}/api/leave/submitLeaveOnBehalf"}},
+        {"name":"Edit Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"Description\": \"Updated reason\"\n}"},"url":"{{baseUrl}}/api/leave/editLeaveRequest"}},
+        {"name":"Draft Save Leave Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
+          {"key":"attachment","type":"file","src":""},
+          {"key":"FromDate","type":"text","value":"2025-08-10"},
+          {"key":"ToDate","type":"text","value":"2025-08-12"},
+          {"key":"Type","type":"text","value":"Annual"},
+          {"key":"Description","type":"text","value":"Family trip"}
+        ]},"url":"{{baseUrl}}/api/leave/draftSaveLeaveRequest"}},
+        {"name":"Get Pending Leave Request Details","request":{"method":"GET","header":[{"key":"leavereqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getPendingLeaveRequestDetails"}},
+        {"name":"Approve/Reject Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeaveRequest"}},
+        {"name":"Change Leave Request Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"status\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/leave/changeLeaveRequestApproval"}},
+        {"name":"Delegate Leave Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\",\n  \"Comment\": \"Delegating for coverage\"\n}"},"url":"{{baseUrl}}/api/leave/delegateLeaveApproval"}}
       ]
     },
     {

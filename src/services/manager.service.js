@@ -89,7 +89,7 @@ async function getTeamAttendanceSummary(ManagerEmpID, month, year) {
       .input('Month', sql.Int, month)
       .input('Year', sql.Int, year)
       .query(`SELECT COUNT(*) as ExcuseCount FROM ExcuseReqTable 
-               WHERE EmpID=@EmpID AND MONTH(Date)=@Month AND YEAR(Date)=@Year`);
+               WHERE EmpID=@EmpID AND MONTH(excuseDate)=@Month AND YEAR(excuseDate)=@Year`);
     summary.push({
       EmpID: member.EmpID,
       Name: member.Name,

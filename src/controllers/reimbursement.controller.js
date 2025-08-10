@@ -124,6 +124,9 @@ exports.submitReimbursementRequest = async (req, res) => {
     const ReimbursementID = await reimbursementService.submitReimbursementRequest(
       req.body,
       req.file?.buffer,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size,
       req.cookies.EmpID,
       req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
     );
@@ -138,6 +141,9 @@ exports.submitReimbursementRequestOnBehalf = async (req, res) => {
     const ReimbursementID = await reimbursementService.submitReimbursementRequestOnBehalf(
       req.body,
       req.file?.buffer,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size,
       req.body.EmpID,
       req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
     );

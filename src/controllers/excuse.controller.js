@@ -3,15 +3,15 @@ const excuseService = require('../services/excuse.service');
 // Submit new excuse with optional attachment
 exports.submitExcuseRequest = async (req, res) => {
   try {
-    const { originalname, mimetype, buffer } = req.file || {};
     const data = req.body;
-    const attachment = req.file ? { fileName: originalname, contentType: mimetype, fileData: buffer } : null;
-
     const ExcuseReqID = await excuseService.submitExcuseRequest(
       data,
-      attachment,
+      req.file?.buffer,
       req.cookies.EmpID,
-      req.cookies.context.CompanyID
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size
     );
     res.json({ message: 'Excuse submitted successfully', ExcuseReqID });
   } catch (err) {
@@ -43,7 +43,10 @@ exports.getExcuseTypes = async (req, res) => {
 // Get transaction history/logs for an excuse
 exports.getExcuseTransactions = async (req, res) => {
   try {
-    const transactions = await excuseService.getExcuseTransactions(req.cookies.EmpID, req.cookies.context.CompanyID);
+    const transactions = await excuseService.getExcuseTransactions(
+      req.cookies.EmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(transactions);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -64,15 +67,15 @@ exports.getExcuseRequestDetails = async (req, res) => {
 // Submit excuse on behalf of another employee
 exports.submitExcuseOnBehalf = async (req, res) => {
   try {
-    const { originalname, mimetype, buffer } = req.file || {};
     const data = req.body;
-    const attachment = req.file ? { fileName: originalname, contentType: mimetype, fileData: buffer } : null;
-
     const ExcuseReqID = await excuseService.submitExcuseOnBehalf(
       data,
-      attachment,
+      req.file?.buffer,
       req.body.EmpID,
-      req.cookies.context.CompanyID
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size
     );
     res.json({ message: 'Excuse submitted on behalf successfully', ExcuseReqID });
   } catch (err) {
@@ -97,8 +100,12 @@ exports.draftSaveExcuseRequest = async (req, res) => {
     const data = req.body;
     const ExcuseReqID = await excuseService.draftSaveExcuseRequest(
       data,
+      req.file?.buffer,
       req.cookies.EmpID,
-      req.cookies.context.CompanyID
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.file?.originalname,
+      req.file?.mimetype,
+      req.file?.size
     );
     res.json({ message: 'Excuse request draft saved', ExcuseReqID });
   } catch (err) {
@@ -110,7 +117,10 @@ exports.draftSaveExcuseRequest = async (req, res) => {
 exports.getPendingExcuseRequests = async (req, res) => {
   try {
     const ApproverEmpID = req.cookies.EmpID;
-    const pending = await excuseService.getPendingExcuseRequests(ApproverEmpID, req.cookies.context.CompanyID);
+    const pending = await excuseService.getPendingExcuseRequests(
+      ApproverEmpID,
+      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+    );
     res.json(pending);
   } catch (err) {
     res.status(500).json({ error: err.message });

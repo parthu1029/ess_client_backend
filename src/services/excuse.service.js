@@ -1,7 +1,7 @@
 const sql = require('mssql');
 const dbConfig = require('../config/db.config');
 const { randomBytes } = require('crypto');
-const { generateRequestId } = require('../utils/ids');
+const { generateRequestId, generateAttachmentID } = require('../utils/ids');
 
 function generateTimelineID() {
   return randomBytes(4).toString('hex');
@@ -37,30 +37,42 @@ function formatToSQLTime(timeInput) {
 }
 
 // Submit new excuse with optional attachment
-async function submitExcuseRequest(data, attachment, EmpID, CompanyID) {
+async function submitExcuseRequest(data, attachmentBuffer = null, EmpID, CompanyID, fileName, fileType, fileSize) {
   const pool = await sql.connect(dbConfig);
 
   // Determine manager for this employee
   let managerID = null;
   const mgrRes = await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
-    .query('SELECT managerEmpID FROM EmpProfileTable WHERE empID = @EmpID');
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .query('SELECT managerEmpID FROM EmpProfileTable WHERE empID = @EmpID AND CompanyID = @CompanyID');
   if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerEmpID;
 
   const ExcuseReqID = generateRequestId();
-console.log(data.From);
-console.log(data.To);
-console.log(data.Date);
-console.log(data.Reason);
-console.log(formatToSQLTime(data.From));
-console.log(formatToSQLTime(data.To));
+
+  // Optional: persist attachment as blob in AttachmentsTable and reference by ID
+  let attachmentID = null;
+  if (attachmentBuffer) {
+    attachmentID = generateAttachmentID();
+    await pool.request()
+      .input('attachmentID', sql.VarChar(30), attachmentID)
+      .input('fileName', sql.VarChar(255), fileName)
+      .input('fileType', sql.VarChar(100), fileType)
+      .input('fileSize', sql.Int, fileSize)
+      .input('content', sql.VarBinary(sql.MAX), attachmentBuffer)
+      .input('uploadedDate', sql.DateTime, new Date())
+      .query(`
+        INSERT INTO AttachmentsTable (attachmentID, fileName, fileType, fileSize, content, uploadedDate)
+        VALUES (@attachmentID, @fileName, @fileType, @fileSize, @content, @uploadedDate)
+      `);
+  }
   await pool.request()
     .input('ExcuseReqID', sql.VarChar(30), ExcuseReqID)
     .input('EmpID', sql.VarChar(30), EmpID)
     .input('CompanyID', sql.VarChar(30), CompanyID)
     .input('fromTime', sql.Time, formatToSQLTime(data.From))
     .input('toTime', sql.Time, formatToSQLTime(data.To))
-    .input('attachmentID', sql.VarChar(30), attachment ? attachment : null) // If uploading as blob
+    .input('attachmentID', sql.VarChar(30), attachmentID)
     .input('submittedDate', sql.Date, new Date())
     .input('status', sql.VarChar(15), 'Pending')
     .input('approverEmpID', sql.VarChar(30), managerID)
@@ -108,12 +120,13 @@ console.log(formatToSQLTime(data.To));
   return ExcuseReqID;
 }
 
-// Get excuse history for an employee
-async function getExcuseTransactions(EmpID) {
+// Get excuse transactions (history) for an employee
+async function getExcuseTransactions(EmpID, CompanyID) {
   const pool = await sql.connect(dbConfig);
   const res = await pool.request()
     .input('empID', sql.VarChar(30), EmpID)
-    .query('SELECT * FROM ExcuseReqTable WHERE empID = @empID ORDER BY submittedDate DESC');
+    .input('companyID', sql.VarChar(30), CompanyID)
+    .query('SELECT * FROM ExcuseReqTable WHERE empID = @empID AND companyID = @companyID ORDER BY submittedDate DESC');
   return res.recordset;
 }
 
@@ -155,34 +168,50 @@ async function editExcuseRequest(ExcuseReqID, updateData) {
 }
 
 // Save as draft
-async function draftSaveExcuseRequest(data, EmpID, CompanyID) {
+async function draftSaveExcuseRequest(data, attachmentBuffer = null, EmpID, CompanyID, fileName, fileType, fileSize) {
   const pool = await sql.connect(dbConfig);
   // Determine manager for this employee
   let managerID = null;
   const mgrRes = await pool.request()
     .input('EmpID', sql.VarChar(30), EmpID)
-    .query('SELECT managerEmpID FROM EmpProfileTable WHERE empID = @EmpID');
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .query('SELECT managerEmpID FROM EmpProfileTable WHERE empID = @EmpID AND CompanyID = @CompanyID');
   if (mgrRes.recordset.length) managerID = mgrRes.recordset[0].managerEmpID;
 
   const ExcuseReqID = generateRequestId();
 
+  let attachmentID = null;
+  if (attachmentBuffer) {
+    attachmentID = generateAttachmentID();
+    await pool.request()
+      .input('attachmentID', sql.VarChar(30), attachmentID)
+      .input('fileName', sql.VarChar(255), fileName)
+      .input('fileType', sql.VarChar(100), fileType)
+      .input('fileSize', sql.Int, fileSize)
+      .input('content', sql.VarBinary(sql.MAX), attachmentBuffer)
+      .input('uploadedDate', sql.DateTime, new Date())
+      .query(`
+        INSERT INTO AttachmentsTable (attachmentID, fileName, fileType, fileSize, content, uploadedDate)
+        VALUES (@attachmentID, @fileName, @fileType, @fileSize, @content, @uploadedDate)
+      `);
+  }
   await pool.request()
     .input('excuseReqID', sql.VarChar(30), ExcuseReqID)
     .input('empID', sql.VarChar(30), EmpID)
     .input('companyID', sql.VarChar(30), CompanyID)
     .input('fromTime', sql.Time, formatToSQLTime(data.From))
     .input('toTime', sql.Time, formatToSQLTime(data.To))
-    .input('attachmentID', sql.VarChar(30), data.AttachmentID || null)
+    .input('attachmentID', sql.VarChar(30), attachmentID)
     .input('submittedDate', sql.Date, data.ReqSubmittedDate || new Date())
     .input('status', sql.VarChar(15), 'Draft')
     .input('approverEmpID', sql.VarChar(30), managerID)
-    .input('date', sql.Date, data.Date)
+    .input('excuseDate', sql.Date, data.Date)
     .input('reason', sql.VarChar(100), data.Reason)
     .query(`
       INSERT INTO ExcuseReqTable
-      (excuseReqID, empID, companyID, fromTime, toTime, attachmentID, submittedDate, status, approverEmpID, date, reason)
+      (excuseReqID, empID, companyID, fromTime, toTime, attachmentID, submittedDate, status, approverEmpID, excuseDate, reason)
       VALUES 
-      (@excuseReqID, @empID, @companyID, @fromTime, @toTime, @attachmentID, @submittedDate, @status, @approverEmpID, @date, @reason)
+      (@excuseReqID, @empID, @companyID, @fromTime, @toTime, @attachmentID, @submittedDate, @status, @approverEmpID, @excuseDate, @reason)
     `);
 
   return ExcuseReqID;
@@ -242,19 +271,11 @@ async function delegateExcuseApproval(ExcuseReqID, newApproverEmpID, comments) {
 }
 
 // Submit excuse on behalf of another employee
-async function submitExcuseOnBehalf(data, attachment, EmpID, CompanyID) {
-  return await submitExcuseRequest(data, attachment, EmpID, CompanyID);
+async function submitExcuseOnBehalf(data, attachmentBuffer, EmpID, CompanyID, fileName, fileType, fileSize) {
+  return await submitExcuseRequest(data, attachmentBuffer, EmpID, CompanyID, fileName, fileType, fileSize);
 }
 
-// Get excuse transactions (history) for an employee
-async function getExcuseTransactions(EmpID,CompanyID) {
-  const pool = await sql.connect(dbConfig);
-  const res = await pool.request()
-    .input('empID', sql.VarChar(30), EmpID)
-    .input('companyID', sql.VarChar(30), CompanyID)
-    .query('SELECT * FROM ExcuseReqTable WHERE empID = @empID AND companyID = @companyID ORDER BY submittedDate DESC');
-  return res.recordset;
-}
+// (removed duplicate getExcuseTransactions definition)
 
 // Get full details for a specific excuse request
 async function getExcuseRequestDetails(ExcuseReqID) {

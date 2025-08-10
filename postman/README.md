@@ -14,9 +14,10 @@ These assets provide an industrial-grade, future-proof Postman setup for local d
 
 ## Variables & Cookies
 - Variables: `baseUrl`, `EmpID`, `CompanyID`, `reqid`, `tripid`.
-- The collection has a Pre-request Script which sets two cookies for each request host:
+- The collection has a Pre-request Script which sets cookies for each request host:
   - `EmpID` = `{{EmpID}}`
   - `CompanyID` = `{{CompanyID}}`
+- `Context` cookie is also set as JSON with `CompanyID` so the backend can read `req.cookies.Context.CompanyID`.
 - The server normalizes cookies via `src/middlewares/normalizeCookies.js` (supports `Context.CompanyID`, `context.CompanyID`, and flat `CompanyID`).
 
 ## Switching Environments
@@ -26,12 +27,15 @@ These assets provide an industrial-grade, future-proof Postman setup for local d
 ## File Uploads
 - Reimbursement: form-data key `receipt` (type: File).
 - BusinessTrip: form-data key `attachment` (type: File).
+- Leave: form-data key `attachment` (type: File).
 - Excuse: form-data key `attachment` (type: File).
 - Profile Photo: form-data key `photo` (type: File).
 
+Accepted types: JPEG, PNG, PDF (see `src/middlewares/upload.js`). Max size: 30MB.
+
 ## Dynamic IDs
-- Some endpoints require headers or query params like `reqid` or `tripid`.
-- The collection Test script attempts to capture IDs returned by responses and store them into `reqid`/`tripid` environment vars for chaining.
+- Some endpoints use headers or query params like `reqid` or `tripid`.
+- Tests auto-capture common IDs from responses (e.g., `LeaveReqID`, `ExcuseReqID`, `ReqID`, `tripId`) and set both `reqid` and `tripid` environment vars for chaining.
 
 ## Known Route Oddities (mirrored for testing)
 - `document.routes.js`: `router.patch('approveRejectDocumentRequest', ...)` is missing a leading `/`.

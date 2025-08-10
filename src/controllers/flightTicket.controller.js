@@ -95,6 +95,7 @@ exports.delegateFlightTicketApproval = async (req, res) => {
     await flightTicketService.delegateFlightTicketApproval(
       requestId,
       newApproverEmpID,
+      req.body.comments,
       req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
     );
     res.json({ message: 'Flight ticket approval delegated successfully' });
@@ -106,10 +107,10 @@ exports.delegateFlightTicketApproval = async (req, res) => {
 // Change flight ticket request approval status
 exports.changeFlightTicketApproval = async (req, res) => {
   try {
-    const { requestId, approvalStatus } = req.body;
+    const { requestId, comments } = req.body;
     await flightTicketService.changeFlightTicketApproval(
       requestId,
-      approvalStatus,
+      comments,
       req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
     );
     res.json({ message: 'Flight ticket approval status changed successfully' });
@@ -137,10 +138,9 @@ exports.approveRejectFlightTicketRequest = async (req, res) => {
 // Get details for a pending flight ticket request
 exports.getPendingFlightTicketRequestsDetails = async (req, res) => {
   try {
-    const { requestId } = req.query;
+    const { requestId } = req.body;
     const details = await flightTicketService.getPendingFlightTicketRequestsDetails(
-      requestId,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      requestId
     );
     res.json(details);
   } catch (err) {
