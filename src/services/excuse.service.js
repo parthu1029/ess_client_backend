@@ -8,13 +8,12 @@ function generateTimelineID() {
 }
 
 function formatToSQLTime(timeInput) {
+  // Return a Date anchored at 1970-01-01 with the provided time.
+  // This is reliably accepted by mssql for sql.Time parameters.
+  if (timeInput == null || timeInput === '') return null;
   if (timeInput instanceof Date) {
-    const h = String(timeInput.getHours()).padStart(2, '0');
-    const m = String(timeInput.getMinutes()).padStart(2, '0');
-    const s = String(timeInput.getSeconds()).padStart(2, '0');
-    return `${h}:${m}:${s}`;
+    return new Date(1970, 0, 1, timeInput.getHours(), timeInput.getMinutes(), timeInput.getSeconds(), timeInput.getMilliseconds());
   }
-  if (timeInput == null) return null;
   const raw = String(timeInput).trim();
   const ampmMatch = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(AM|PM)$/i);
   let h, m, s;
@@ -26,14 +25,17 @@ function formatToSQLTime(timeInput) {
     if (ampm === 'PM' && h < 12) h += 12;
     if (ampm === 'AM' && h === 12) h = 0;
   } else {
-    const match = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    const match = raw.match(/^(\d{1,2}):(\d{2})(?::(\d{2}))?$/);
     if (!match) return null;
     h = parseInt(match[1], 10);
     m = parseInt(match[2], 10);
     s = parseInt(match[3] || '0', 10);
   }
-  if (Number.isNaN(h) || Number.isNaN(m) || Number.isNaN(s)) return null;
-  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  if (
+    Number.isNaN(h) || Number.isNaN(m) || Number.isNaN(s) ||
+    h < 0 || h > 23 || m < 0 || m > 59 || s < 0 || s > 59
+  ) return null;
+  return new Date(1970, 0, 1, h, m, s, 0);
 }
 
 // Submit new excuse with optional attachment
