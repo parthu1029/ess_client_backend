@@ -6,8 +6,8 @@ exports.submitReimbursement = async (req, res) => {
     const ReimbursementID = await reimbursementService.submitReimbursementRequest(
       req.body,
       req.file?.buffer,
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement request submitted", ReimbursementID });
   } catch (err) {
@@ -19,9 +19,9 @@ exports.submitReimbursement = async (req, res) => {
 exports.approveRejectReimbursement = async (req, res) => {
   try {
     await reimbursementService.approveRejectReimbursementRequest(
-      req.body.ReqID,
+      req.body.reqid,
       req.body.action,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: `Reimbursement request ${req.body.action}d` });
   } catch (err) {
@@ -41,8 +41,8 @@ exports.getReimbursementTypes = async (req, res) => {
 exports.getPendingReimbursements = async (req, res) => {
   try {
     const pending = await reimbursementService.getPendingReimbursementRequests(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(pending);
   } catch (err) {
@@ -54,7 +54,7 @@ exports.cancelReimbursement = async (req, res) => {
   try {
     await reimbursementService.cancelReimbursementRequest(
       req.headers['reqid'],
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement request cancelled" });
   } catch (err) {
@@ -67,7 +67,7 @@ exports.getReimbursementById = async (req, res) => {
     const ReimbursementID = req.headers['reqid'];
     const result = await reimbursementService.getReimbursementRequestDetails(
       ReimbursementID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json(result);
   } catch (err) {
@@ -80,7 +80,7 @@ exports.downloadReceipt = async (req, res) => {
     const ReimbursementID = req.headers['reqid']; 
     const details = await reimbursementService.getReimbursementRequestDetails(
       ReimbursementID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     const buffer = details?.Attachment;
     if (buffer) {
@@ -97,8 +97,8 @@ exports.downloadReceipt = async (req, res) => {
 exports.getReimbursementTransactions = async (req, res) => {
   try {
     const txs = await reimbursementService.getReimbursementTransactions(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(txs);
   } catch (err) {
@@ -111,7 +111,7 @@ exports.getReimbursementRequestDetails = async (req, res) => {
     const ReimbursementID = req.headers['reqid'];
     const details = await reimbursementService.getReimbursementRequestDetails(
       ReimbursementID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json(details);
   } catch (err) {
@@ -127,8 +127,8 @@ exports.submitReimbursementRequest = async (req, res) => {
       req.file?.originalname,
       req.file?.mimetype,
       req.file?.size,
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement request submitted", ReimbursementID });
   } catch (err) {
@@ -144,8 +144,8 @@ exports.submitReimbursementRequestOnBehalf = async (req, res) => {
       req.file?.originalname,
       req.file?.mimetype,
       req.file?.size,
-      req.body.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.body.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement request submitted on behalf", ReimbursementID });
   } catch (err) {
@@ -156,9 +156,9 @@ exports.submitReimbursementRequestOnBehalf = async (req, res) => {
 exports.editReimbursementRequest = async (req, res) => {
   try {
     await reimbursementService.editReimbursementRequest(
-      req.body.ReimbursementID,
+      req.body.reqid,
       req.body,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement request edited" });
   } catch (err) {
@@ -171,8 +171,8 @@ exports.draftSaveReimbursementRequest = async (req, res) => {
     const ReimbursementID = await reimbursementService.draftSaveReimbursementRequest(
       req.body,
       req.file?.buffer,
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement draft saved", ReimbursementID });
   } catch (err) {
@@ -182,11 +182,11 @@ exports.draftSaveReimbursementRequest = async (req, res) => {
 
 exports.delegateReimbursementApproval = async (req, res) => {
   try {
-    const { ReimbursementID, newApproverEmpID } = req.body;
+    const { reqid, newApproverEmpID } = req.body;
     await reimbursementService.delegateReimbursementApproval(
-      ReimbursementID,
+      reqid,
       newApproverEmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement approval delegated successfully" });
   } catch (err) {
@@ -197,8 +197,8 @@ exports.delegateReimbursementApproval = async (req, res) => {
 exports.changeReimbursementApproval = async (req, res) => {
   try {
     await reimbursementService.changeReimbursementApproval(
-      req.body.ReimbursementID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.body.reqid,
+      req.cookies.context.companyid
     );
     res.json({ message: "Reimbursement approval status updated" });
   } catch (err) {
@@ -209,9 +209,9 @@ exports.changeReimbursementApproval = async (req, res) => {
 exports.approveRejectReimbursementRequest = async (req, res) => {
   try {
     await reimbursementService.approveRejectReimbursementRequest(
-      req.body.ReimbursementID,
+      req.body.reqid,
       req.body.action,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: `Reimbursement ${req.body.action}d` });
   } catch (err) {
@@ -224,7 +224,7 @@ exports.getPendingReimbursementRequestDetails = async (req, res) => {
     const ReimbursementID = req.headers['reqid'];
     const details = await reimbursementService.getPendingReimbursementRequestDetails(
       ReimbursementID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json(details);
   } catch (err) {
@@ -235,8 +235,8 @@ exports.getPendingReimbursementRequestDetails = async (req, res) => {
 exports.getPendingReimbursementRequests = async (req, res) => {
   try {
     const result = await reimbursementService.getPendingReimbursementRequests(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(result);
   } catch (err) {

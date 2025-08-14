@@ -4,8 +4,8 @@ exports.getRequestTransactions = async (req, res) => {
   try {
      // Pass ?EmpID=... for filtering, else get all (admin)
     const transactions = await requestService.getRequestTransactions(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(transactions);
   } catch (err) {

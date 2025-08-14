@@ -6,8 +6,8 @@ exports.applyLeave = async (req, res) => {
     const result = await leaveService.applyLeave(
       req.body,
       req.file?.buffer,
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.cookies.empid,
+      req.cookies.context.companyid,
       req.file?.originalname,
       req.file?.mimetype,
       req.file?.size
@@ -22,8 +22,8 @@ exports.applyLeave = async (req, res) => {
 exports.getLeaveHistory = async (req, res) => {
   try {
     const history = await leaveService.getLeaveHistory(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(history);
   } catch (err) {
@@ -44,7 +44,7 @@ exports.getLeaveTypes = async (req, res) => {
 // Cancel a leave request
 exports.cancelLeave = async (req, res) => {
   try {
-    await leaveService.cancelLeave(req.headers['leavereqid']);
+    await leaveService.cancelLeave(req.headers['reqid']);
     res.json({ message: "Leave cancelled" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -54,7 +54,7 @@ exports.cancelLeave = async (req, res) => {
 // Approve or reject leave
 exports.approveRejectLeave = async (req, res) => {
   try {
-    await leaveService.approveRejectLeave(req.body.LeaveReqID, req.body.action);
+    await leaveService.approveRejectLeave(req.body.reqid, req.body.action);
     res.json({ message: `Leave request ${req.body.action}d` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -65,8 +65,8 @@ exports.approveRejectLeave = async (req, res) => {
 exports.getPendingLeaves = async (req, res) => {
   try {
     const pending = await leaveService.getPendingLeaves(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(pending);
   } catch (err) {
@@ -77,7 +77,7 @@ exports.getPendingLeaves = async (req, res) => {
 // Get one leave by ID
 exports.getLeaveById = async (req, res) => {
   try {
-    const leave = await leaveService.getLeaveById(req.headers['leavereqid']);
+    const leave = await leaveService.getLeaveById(req.headers['reqid']);
     res.json(leave);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -87,7 +87,7 @@ exports.getLeaveById = async (req, res) => {
 // Update leave request
 exports.updateLeave = async (req, res) => {
   try {
-    await leaveService.updateLeave(req.body.LeaveReqID, req.body);
+    await leaveService.updateLeave(req.body.reqid, req.body);
     res.json({ message: "Leave request updated" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -103,8 +103,8 @@ exports.getLeaveRequestTransactions = async (req, res) => {
 exports.getLeaveRequestDetails = async (req, res) => {
   try {
     const details = await leaveService.getLeaveRequestDetails(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(details);
   } catch (err) {
@@ -119,8 +119,8 @@ exports.submitLeaveOnBehalf = async (req, res) => {
     const result = await leaveService.applyLeave(
       req.body,
       req.file?.buffer,
-      req.body.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.body.empid,
+      req.cookies.context.companyid,
       req.file?.originalname,
       req.file?.mimetype,
       req.file?.size
@@ -134,7 +134,7 @@ exports.submitLeaveOnBehalf = async (req, res) => {
 // Edit a request
 exports.editLeaveRequest = async (req, res) => {
   try {
-    await leaveService.editLeaveRequest(req.body.LeaveReqID, req.body);
+    await leaveService.editLeaveRequest(req.body.reqid, req.body);
     res.json({ message: "Leave request edited" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -147,8 +147,8 @@ exports.draftSaveLeaveRequest = async (req, res) => {
     const LeaveReqID = await leaveService.draftSaveLeaveRequest(
       req.body,
       req.file?.buffer,
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID,
+      req.cookies.empid,
+      req.cookies.context.companyid,
       req.file?.originalname,
       req.file?.mimetype,
       req.file?.size
@@ -161,7 +161,7 @@ exports.draftSaveLeaveRequest = async (req, res) => {
 
 exports.getPendingLeaveRequestDetails = async (req, res) => {
   try {
-    const detail = await leaveService.getPendingLeaveRequestDetails(req.headers['leavereqid']);
+    const detail = await leaveService.getPendingLeaveRequestDetails(req.headers['reqid']);
     res.json(detail);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -171,7 +171,7 @@ exports.getPendingLeaveRequestDetails = async (req, res) => {
 // PATCH approve/reject
 exports.approveRejectLeaveRequest = async (req, res) => {
   try {
-    await leaveService.approveRejectLeave(req.body.LeaveReqID, req.body.action);
+    await leaveService.approveRejectLeave(req.body.reqid, req.body.action);
     res.json({ message: `Leave ${req.body.action}d` });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -180,7 +180,7 @@ exports.approveRejectLeaveRequest = async (req, res) => {
 
 exports.changeLeaveRequestApproval = async (req, res) => {
   try {
-    await leaveService.changeLeaveRequestApproval(req.body.LeaveReqID, req.body.status);
+    await leaveService.changeLeaveRequestApproval(req.body.reqid, req.body.status);
     res.json({ message: "Leave approval status updated" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -190,8 +190,8 @@ exports.changeLeaveRequestApproval = async (req, res) => {
 // Delegate leave approval
 exports.delegateLeaveApproval = async (req, res) => {
   try {
-    const { requestID, newApproverEmpID, Comment } = req.body;
-    await leaveService.delegateLeaveApproval(requestID, newApproverEmpID, Comment);
+    const { reqid, newApproverEmpID, comment } = req.body;
+    await leaveService.delegateLeaveApproval(reqid, newApproverEmpID, comment);
     res.json({ message: 'Leave approval delegated successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });

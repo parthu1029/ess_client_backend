@@ -14,8 +14,8 @@ exports.getBusinessTripRequestDetails = async (req, res) => {
 // View business trip transactions
 exports.getBusinessTripTransactions = async (req, res) => {
   try {
-    const EmpID = req.cookies.EmpID;
-    const CompanyID = req.cookies.context.CompanyID;
+    const EmpID = req.cookies.empid;
+    const CompanyID = req.cookies.context.companyid;
     const result = await businessTripService.getBusinessTripTransactions(EmpID, CompanyID);
     res.json(result);
   } catch (err) {
@@ -35,8 +35,8 @@ exports.submitBusinessTripRequest = async (req, res) => {
       file?.originalname,
       file?.mimetype,
       file?.size,
-      req.cookies.EmpID,
-      req.cookies.context.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: 'Business trip request submitted', reqID });
   } catch (err) {
@@ -49,8 +49,8 @@ exports.submitBusinessTripRequestOnBehalf = async (req, res) => {
   try {
     const data = req.body;
     const file = req.file;
-    const actorEmpID = req.body.EmpID;
-    const CompanyID = req.cookies.context.CompanyID;
+    const actorEmpID = req.body.empid;
+    const CompanyID = req.cookies.context.companyid;
     const reqID = await businessTripService.submitBusinessTripRequestOnBehalf(
       data,
       file?.buffer,
@@ -69,7 +69,7 @@ exports.submitBusinessTripRequestOnBehalf = async (req, res) => {
 // Edit (patch) a business trip request
 exports.editBusinessTripRequest = async (req, res) => {
   try {
-    const { tripId, ...updateData } = req.body;
+    const { reqid: tripId, ...updateData } = req.body;
     await businessTripService.editBusinessTripRequest(tripId, updateData);
     res.json({ message: 'Business trip request updated' });
   } catch (err) {
@@ -88,7 +88,7 @@ exports.draftSaveBusinessTripRequest = async (req, res) => {
       file?.originalname,
       file?.mimetype,
       file?.size,
-      req.cookies.context.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: 'Business trip request draft saved', reqID });
   } catch (err) {
@@ -99,9 +99,9 @@ exports.draftSaveBusinessTripRequest = async (req, res) => {
 // Delegate a business trip request to another approver
 exports.delegateBusinessTripRequest = async (req, res) => {
   try {
-    const { reqID, newApproverEmpID, comments } = req.body;
-    const actorEmpID = req.cookies.EmpID;
-    const CompanyID = req.cookies.context.CompanyID;
+    const { reqid: reqID, newApproverEmpID, comments } = req.body;
+    const actorEmpID = req.cookies.empid;
+    const CompanyID = req.cookies.context.companyid;
     await businessTripService.delegateBusinessTripRequest(
       reqID,
       newApproverEmpID,
@@ -118,7 +118,7 @@ exports.delegateBusinessTripRequest = async (req, res) => {
 // Change approval status/state (patch)
 exports.changeBusinessTripApproval = async (req, res) => {
   try {
-    const {tripId} = req.body;
+    const { reqid: tripId } = req.body;
     await businessTripService.changeBusinessTripApproval(tripId);
     res.json({ message: 'Business trip approval status changed' });
   } catch (err) {
@@ -129,7 +129,7 @@ exports.changeBusinessTripApproval = async (req, res) => {
 // Approve or reject a business trip request
 exports.approveRejectBusinessTripRequest = async (req, res) => {
   try {
-    const { tripId, action, comments } = req.body;
+    const { reqid: tripId, action, comments } = req.body;
     await businessTripService.approveRejectBusinessTripRequest(tripId, action, comments);
     res.json({ message: `Business trip has been ${action}ed.` });
   } catch (err) {
@@ -140,7 +140,7 @@ exports.approveRejectBusinessTripRequest = async (req, res) => {
 // Get all pending business trip requests for approver
 exports.getPendingBusinessTripRequests = async (req, res) => {
   try {
-    const result = await businessTripService.getPendingBusinessTripRequests(req.cookies.EmpID, req.cookies.context.CompanyID);
+    const result = await businessTripService.getPendingBusinessTripRequests(req.cookies.empid, req.cookies.context.companyid);
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -150,7 +150,7 @@ exports.getPendingBusinessTripRequests = async (req, res) => {
 // Get pending request details (single request)
 exports.getPendingBusinessTripRequestDetails = async (req, res) => {
   try {
-    const tripId = req.headers['tripid'];
+    const tripId = req.headers['reqid'];
     const result = await businessTripService.getPendingBusinessTripRequestDetails(tripId);
     res.json(result);
   } catch (err) {

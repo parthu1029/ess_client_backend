@@ -5,8 +5,8 @@ exports.getFlightTicketRequestDetails = async (req, res) => {
   try {
     
     const details = await flightTicketService.getFlightTicketRequestDetails(
-      req.headers.reqid,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.headers['reqid'],
+      req.cookies.context.companyid
     );
     res.json(details);
   } catch (err) {
@@ -19,8 +19,8 @@ exports.getFlightTicketTransactions = async (req, res) => {
   try {
     
     const transactions = await flightTicketService.getFlightTicketTransactions(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(transactions);
   } catch (err) {
@@ -34,8 +34,8 @@ exports.submitFlightTicketRequest = async (req, res) => {
     const data = req.body; // expects all needed fields
     const ReqID = await flightTicketService.submitFlightTicketRequest(
       data,
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: 'Flight ticket request submitted successfully', ReqID });
   } catch (err) {
@@ -49,8 +49,8 @@ exports.submitFlightTicketRequestOnBehalf = async (req, res) => {
     const data = req.body;
     const ReqID = await flightTicketService.submitFlightTicketRequestOnBehalf(
       data,
-      req.body.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.body.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: 'Flight ticket request submitted on behalf successfully', ReqID });
   } catch (err) {
@@ -61,11 +61,11 @@ exports.submitFlightTicketRequestOnBehalf = async (req, res) => {
 // Edit (patch) existing flight ticket request
 exports.editFlightTicketRequest = async (req, res) => {
   try {
-    const { requestId, ...updateData } = req.body;
+    const { reqid: requestId, ...updateData } = req.body;
     await flightTicketService.editFlightTicketRequest(
       requestId,
       updateData,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: 'Flight ticket request updated successfully' });
   } catch (err) {
@@ -79,8 +79,8 @@ exports.draftSaveFlightTicketRequest = async (req, res) => {
     const data = req.body;
     const ReqID = await flightTicketService.draftSaveFlightTicketRequest(
       data,
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json({ message: 'Flight ticket request draft saved successfully', ReqID });
   } catch (err) {
@@ -91,12 +91,12 @@ exports.draftSaveFlightTicketRequest = async (req, res) => {
 // Delegate flight ticket approval to another approver
 exports.delegateFlightTicketApproval = async (req, res) => {
   try {
-    const { requestId, newApproverEmpID } = req.body;
+    const { reqid: requestId, newApproverEmpID } = req.body;
     await flightTicketService.delegateFlightTicketApproval(
       requestId,
       newApproverEmpID,
       req.body.comments,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: 'Flight ticket approval delegated successfully' });
   } catch (err) {
@@ -107,11 +107,11 @@ exports.delegateFlightTicketApproval = async (req, res) => {
 // Change flight ticket request approval status
 exports.changeFlightTicketApproval = async (req, res) => {
   try {
-    const { requestId, comments } = req.body;
+    const { reqid: requestId, comments } = req.body;
     await flightTicketService.changeFlightTicketApproval(
       requestId,
       comments,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: 'Flight ticket approval status changed successfully' });
   } catch (err) {
@@ -122,12 +122,12 @@ exports.changeFlightTicketApproval = async (req, res) => {
 // Approve or reject flight ticket request
 exports.approveRejectFlightTicketRequest = async (req, res) => {
   try {
-    const { requestId, action, comments } = req.body; // action: 'approve' or 'reject'
+    const { reqid: requestId, action, comments } = req.body; // action: 'approve' or 'reject'
     await flightTicketService.approveRejectFlightTicketRequest(
       requestId,
       action,
       comments,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.context.companyid
     );
     res.json({ message: `Flight ticket request ${action}d successfully` });
   } catch (err) {
@@ -138,7 +138,7 @@ exports.approveRejectFlightTicketRequest = async (req, res) => {
 // Get details for a pending flight ticket request
 exports.getPendingFlightTicketRequestsDetails = async (req, res) => {
   try {
-    const { requestId } = req.body;
+    const { reqid: requestId } = req.body;
     const details = await flightTicketService.getPendingFlightTicketRequestsDetails(
       requestId
     );
@@ -152,8 +152,8 @@ exports.getPendingFlightTicketRequestsDetails = async (req, res) => {
 exports.getPendingFlightTicketRequests = async (req, res) => {
   try {
     const pendingRequests = await flightTicketService.getPendingFlightTicketRequests(
-      req.cookies.EmpID,
-      req.cookies.Context?.CompanyID || req.cookies.context?.CompanyID
+      req.cookies.empid,
+      req.cookies.context.companyid
     );
     res.json(pendingRequests);
   } catch (err) {

@@ -2,7 +2,7 @@ const profileService = require('../services/profile.service');
 
 exports.getProfile = async (req, res) => {
   try {
-    const profile = await profileService.getProfile(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    const profile = await profileService.getProfile(req.cookies.empid, req.cookies.context.companyid);
     res.json(profile);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -11,7 +11,7 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    await profileService.updateProfile(req.cookies.EmpID, req.cookies.Context.CompanyID, req.body);
+    await profileService.updateProfile(req.cookies.empid, req.cookies.context.companyid, req.body);
     res.json({ message: "Profile updated successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -22,7 +22,7 @@ exports.uploadPhoto = async (req, res) => {
   try {
     const photo = req.file.buffer;
     console.log(photo);
-    await profileService.uploadPhoto(req.cookies.EmpID, req.cookies.Context.CompanyID, photo);
+    await profileService.uploadPhoto(req.cookies.empid, req.cookies.context.companyid, photo);
     res.json({ message: "Photo uploaded successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -31,7 +31,7 @@ exports.uploadPhoto = async (req, res) => {
 
 exports.getPhoto = async (req, res) => {
   try {
-    const photo = await profileService.getPhoto(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    const photo = await profileService.getPhoto(req.cookies.empid, req.cookies.context.companyid);
     if (photo) {
       res.contentType('image/jpeg').send(photo);
     } else {
@@ -44,7 +44,7 @@ exports.getPhoto = async (req, res) => {
 
 exports.deletePhoto = async (req, res) => {
   try {
-    await profileService.deletePhoto(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    await profileService.deletePhoto(req.cookies.empid, req.cookies.context.companyid);
     res.json({ message: "Photo deleted successfully" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -53,7 +53,7 @@ exports.deletePhoto = async (req, res) => {
 
 exports.getEmploymentSummary = async (req, res) => {
   try {
-    const summary = await profileService.getEmploymentSummary(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    const summary = await profileService.getEmploymentSummary(req.cookies.empid, req.cookies.context.companyid);
     res.json(summary);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -62,7 +62,7 @@ exports.getEmploymentSummary = async (req, res) => {
 
 exports.getPersonalInfo = async (req, res) => {
   try {
-    const info = await profileService.getPersonalInfo(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    const info = await profileService.getPersonalInfo(req.cookies.empid, req.cookies.context.companyid);
     res.json(info);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -71,7 +71,7 @@ exports.getPersonalInfo = async (req, res) => {
 
 exports.updatePersonalInfo = async (req, res) => {
   try {
-    await profileService.updatePersonalInfo(req.cookies.EmpID, req.cookies.Context.CompanyID, req.body);
+    await profileService.updatePersonalInfo(req.cookies.empid, req.cookies.context.companyid, req.body);
     res.json({ message: "Personal info updated" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -80,7 +80,7 @@ exports.updatePersonalInfo = async (req, res) => {
 
 exports.getContactInfo = async (req, res) => {
   try {
-    const info = await profileService.getContactInfo(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    const info = await profileService.getContactInfo(req.cookies.empid, req.cookies.context.companyid);
     res.json(info);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -89,7 +89,7 @@ exports.getContactInfo = async (req, res) => {
 
 exports.updateContactInfo = async (req, res) => {
   try {
-    await profileService.updateContactInfo(req.cookies.EmpID, req.cookies.Context.CompanyID, req.body);
+    await profileService.updateContactInfo(req.cookies.empid, req.cookies.context.companyid, req.body);
     res.json({ message: "Contact info updated" });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -98,7 +98,7 @@ exports.updateContactInfo = async (req, res) => {
 
 exports.getProfileSummary = async (req, res) => {
   try {
-    const summary = await profileService.getProfileSummary(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    const summary = await profileService.getProfileSummary(req.cookies.empid, req.cookies.context.companyid);
     res.json(summary);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -107,7 +107,7 @@ exports.getProfileSummary = async (req, res) => {
 
 exports.getCalendar = async (req, res) => {
   try {
-    const calendar = await profileService.getCalendar(req.cookies.EmpID, req.cookies.Context.CompanyID);
+    const calendar = await profileService.getCalendar(req.cookies.empid, req.cookies.context.companyid);
     res.json(calendar);
   } catch (err) {
     res.status(500).json({ error: err.message });
