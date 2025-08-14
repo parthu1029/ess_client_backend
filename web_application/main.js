@@ -116,12 +116,13 @@
 
     const bodyWrap = node.querySelector('.endpoint-body');
 
-    // Headers section (from Postman collection)
-    if (Array.isArray(ep.headers) && ep.headers.length) {
+    // Headers section (prefer predefined from backend, fallback to Postman)
+    const headerTemplate = (ep.predefined && Array.isArray(ep.predefined.headers)) ? ep.predefined.headers : ep.headers;
+    if (Array.isArray(headerTemplate) && headerTemplate.length) {
       const hsec = document.createElement('div');
       hsec.className = 'field-group headers';
       hsec.innerHTML = '<h4>Headers</h4>';
-      ep.headers.forEach(h => {
+      headerTemplate.forEach(h => {
         const key = h && h.key ? h.key : '';
         const val = h && (h.value !== undefined) ? h.value : '';
         const disabled = !!(h && h.disabled);
@@ -167,7 +168,7 @@
       bodyWrap.appendChild(qsec);
     }
 
-    // Body section for non-GET/DELETE (prefill from Postman definition when available)
+    // Body section for non-GET/DELETE (prefer predefined body from backend when available)
     const needsBody = !['GET','DELETE'].includes(ep.method);
     let modeSel, jsonArea, fdWrap;
     if(needsBody){
@@ -215,8 +216,8 @@
         else { jsonArea.classList.add('hidden'); fdWrap.classList.remove('hidden'); }
       };
 
-      // Prefill body from Postman definition
-      const bodyDef = ep.body || {};
+      // Prefill body from predefined schema (backend), fallback to Postman definition
+      const bodyDef = (ep.predefined && ep.predefined.body) ? ep.predefined.body : (ep.body || {});
       const bodyMode = (bodyDef.mode || '').toLowerCase();
       if (bodyMode === 'raw') {
         if (typeof bodyDef.raw === 'string' && bodyDef.raw.trim()) {
