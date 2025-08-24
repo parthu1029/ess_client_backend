@@ -52,7 +52,6 @@ async function submitExcuseRequest(data, attachmentBuffer = null, EmpID, Company
 
   const ExcuseReqID = generateRequestId();
 
-  // Optional: persist attachment as blob in AttachmentsTable and reference by ID
   let attachmentID = null;
   if (attachmentBuffer) {
     attachmentID = generateAttachmentID();
@@ -156,17 +155,6 @@ async function getExcuseRequestDetails(ExcuseReqID) {
     .input('excuseReqID', sql.VarChar(30), ExcuseReqID)
     .query('SELECT * FROM ExcuseReqTable WHERE excuseReqID = @excuseReqID');
   return res.recordset[0];
-}
-
-// Edit (patch) excuse request
-async function editExcuseRequest(ExcuseReqID, updateData) {
-  const pool = await sql.connect(dbConfig);
-  await pool.request()
-    .input('excuseReqID', sql.VarChar(30), ExcuseReqID)
-    .input('fromTime', sql.Time, formatToSQLTime(updateData.From))
-    .input('toTime', sql.Time, formatToSQLTime(updateData.To))
-    .input('reason', sql.VarChar(100), updateData.Reason)
-    .query(`UPDATE ExcuseReqTable SET fromTime=@fromTime, toTime=@toTime, reason=@reason WHERE excuseReqID=@excuseReqID`);
 }
 
 // Save as draft
@@ -303,7 +291,6 @@ module.exports = {
   approveRejectExcuse,
   cancelExcuse,
   getExcuseRequestDetails,
-  editExcuseRequest,
   draftSaveExcuseRequest,
   getExcuseTypes,
   getPendingExcuseRequests,

@@ -83,17 +83,6 @@ exports.submitExcuseOnBehalf = async (req, res) => {
   }
 };
 
-// Edit (patch) an excuse request
-exports.editExcuseRequest = async (req, res) => {
-  try {
-    const { reqid: requestId, ...updateData } = req.body;
-    await excuseService.editExcuseRequest(requestId, updateData);
-    res.json({ message: 'Excuse request updated' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-
 // Save excuse request draft
 exports.draftSaveExcuseRequest = async (req, res) => {
   try {

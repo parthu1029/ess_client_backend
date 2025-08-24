@@ -136,7 +136,7 @@ exports.approveRejectFlightTicketRequest = async (req, res) => {
 };
 
 // Get details for a pending flight ticket request
-exports.getPendingFlightTicketRequestsDetails = async (req, res) => {
+exports.getPendingFlightTicketRequestDetails = async (req, res) => {
   try {
     const { reqid: requestId } = req.body;
     const details = await flightTicketService.getPendingFlightTicketRequestsDetails(

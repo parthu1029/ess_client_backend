@@ -113,8 +113,8 @@ exports.getLeaveRequestDetails = async (req, res) => {
 };
 
 // Synonyms for submit/apply
-exports.submitLeave = exports.applyLeave;
-exports.submitLeaveOnBehalf = async (req, res) => {
+exports.submitLeaveRequest = exports.applyLeave;
+exports.submitLeaveRequestOnBehalf = async (req, res) => {
   try {
     const result = await leaveService.applyLeave(
       req.body,

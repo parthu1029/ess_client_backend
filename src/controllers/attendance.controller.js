@@ -21,3 +21,16 @@ exports.getCheckinCheckoutHistory = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Get most recent check-in/check-out time for the employee
+exports.getCheckinCheckoutTime = async (req, res) => {
+  try {
+    const latest = await attendanceService.getCheckinCheckoutTime(
+      req.cookies.empid,
+      req.cookies.context.companyid
+    );
+    res.json(latest || {});
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

@@ -61,7 +61,46 @@ async function getRequestTimeline(reqID) {
   return result.recordset;
 }
 
+/**
+ * Get potential delegates: employees in the same company whose grade is equal to
+ * the user's grade or one less than the user's grade.
+ * Returns EmpID, Name, Position, Department, and Photo, ordered by Name ASC.
+ * @param {string} EmpID
+ * @param {string} CompanyID
+ */
+async function getDelegates(EmpID, CompanyID) {
+  const pool = await sql.connect(dbConfig);
+
+  // Find the user's grade
+  const gradeResult = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .query('SELECT Grade FROM EmpProfileTable WHERE EmpID=@EmpID AND CompanyID=@CompanyID');
+
+  const userGrade = gradeResult.recordset[0]?.Grade;
+  if (userGrade === undefined || userGrade === null) {
+    return [];
+  }
+
+  // Fetch employees with same grade or grade-1 in the same company
+  const result = await pool.request()
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .input('Grade', sql.Int, userGrade)
+    .input('GradeMinusOne', sql.Int, userGrade - 1)
+    .query(`
+      SELECT p.EmpID AS empid, p.Name AS name, p.Position AS position, p.Department AS department, ph.photo AS photo
+      FROM EmpProfileTable p
+      LEFT JOIN EmpProfilePhotoTable ph
+        ON ph.EmpID = p.EmpID AND ph.CompanyID = p.CompanyID
+      WHERE p.CompanyID=@CompanyID AND p.Grade IN (@Grade, @GradeMinusOne)
+      ORDER BY p.Name ASC
+    `);
+
+  return result.recordset;
+}
+
 module.exports = {
   getRequestTransactions,
   getRequestTimeline,
+  getDelegates,
 };

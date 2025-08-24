@@ -64,8 +64,9 @@
     {
       "name": "Attendance",
       "item": [
-        {"name":"Mark Attendance","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"type\": \"checkin\"\n}"},"url":"{{baseUrl}}/api/attendance/markAttendance"}},
-        {"name":"Get Checkin/Checkout History","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/attendance/getCheckinCheckoutHistory"}}
+        {"name":"Mark Attendance","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"empid\": \"{{EmpID}}\",\n  \"companyid\": \"{{CompanyID}}\",\n  \"type\": \"checkin\"\n}"},"url":"{{baseUrl}}/api/attendance/markAttendance"}},
+        {"name":"Get Checkin/Checkout History","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/attendance/getCheckinCheckoutHistory"}},
+        {"name":"Get Checkin/Checkout Time","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/attendance/getCheckinCheckoutTime"}}
       ]
     },
     {
@@ -82,34 +83,36 @@
         ]},"url":"{{baseUrl}}/api/businessTrip/submitBusinessTripRequest"}},
         {"name":"Submit Business Trip Request On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
-          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"empid","type":"text","value":"{{EmpID}}"},
           {"key":"Destination","type":"text","value":"City"}
         ]},"url":"{{baseUrl}}/api/businessTrip/submitBusinessTripRequestOnBehalf"}},
-        {"name":"Edit Business Trip Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"tripId\": \"{{reqid}}\",\n  \"Purpose\": \"Updated purpose\"\n}"},"url":"{{baseUrl}}/api/businessTrip/editBusinessTripRequest"}},
+        {"name":"Edit Business Trip Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"Purpose\": \"Updated purpose\"\n}"},"url":"{{baseUrl}}/api/businessTrip/editBusinessTripRequest"}},
         {"name":"Draft Save Business Trip Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
           {"key":"Destination","type":"text","value":"City"}
         ]},"url":"{{baseUrl}}/api/businessTrip/draftSaveBusinessTripRequest"}},
-        {"name":"Delegate Business Trip Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\",\n  \"comments\": \"Please handle\"\n}"},"url":"{{baseUrl}}/api/businessTrip/delegateBusinessTripRequest"}},
-        {"name":"Change Business Trip Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"tripId\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/businessTrip/changeBusinessTripApproval"}},
-        {"name":"Approve/Reject Business Trip Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"tripId\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Looks good\"\n}"},"url":"{{baseUrl}}/api/businessTrip/approveRejectBusinessTripRequest"}},
+        {"name":"Delegate Business Trip Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\",\n  \"comments\": \"Please handle\"\n}"},"url":"{{baseUrl}}/api/businessTrip/delegateBusinessTripRequest"}},
+        {"name":"Change Business Trip Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/businessTrip/changeBusinessTripApproval"}},
+        {"name":"Approve/Reject Business Trip Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Looks good\"\n}"},"url":"{{baseUrl}}/api/businessTrip/approveRejectBusinessTripRequest"}},
         {"name":"Get Pending Business Trip Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/businessTrip/getPendingBusinessTripRequests"}},
-        {"name":"Get Pending Business Trip Request Details","request":{"method":"GET","header":[{"key":"tripid","value":"{{tripid}}"}],"url":"{{baseUrl}}/api/businessTrip/getPendingBusinessTripRequestDetails"}}
+        {"name":"Get Pending Business Trip Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/businessTrip/getPendingBusinessTripRequestDetails"}}
       ]
     },
     {
       "name": "Document",
       "item": [
-        {"name":"Delete Document","request":{"method":"DELETE","header":[],"url":"{{baseUrl}}/api/document/deleteDocument"}},
+        {"name":"Delete Document","request":{"method":"DELETE","header":[{"key":"id","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/document/deleteDocument"}},
         {"name":"Get Document Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/document/getDocumentTransactions"}},
         {"name":"Get Document Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/document/getDocumentRequestDetails"}},
         {"name":"Submit Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\",\n  \"Description\": \"\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequest"}},
-        {"name":"Submit Document Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"EmpID\": \"{{EmpID}}\",\n  \"Type\": \"NOC\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequestOnBehalf"}},
-        {"name":"Edit Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"Description\": \"Updated\"\n}"},"url":"{{baseUrl}}/api/document/editDocumentRequest"}},
-        {"name":"Draft Save Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\"\n}"},"url":"{{baseUrl}}/api/document/draftSaveDocumentRequest"}},
-        {"name":"Delegate Document Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/document/delegateDocumentApproval"}},
-        {"name":"Change Document Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/document/changeDocumentApproval"}},
-        {"name":"Approve/Reject Document Request (route path bug in code)","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/documentapproveRejectDocumentRequest"}}
+        {"name":"Submit Document Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"empid\": \"{{EmpID}}\",\n  \"Type\": \"NOC\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequestOnBehalf"}},
+        {"name":"Edit Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"Description\": \"Updated\"\n}"},"url":"{{baseUrl}}/api/document/editDocumentRequest"}},
+        {"name":"Delegate Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/document/delegateDocumentRequest"}},
+        {"name":"Change Document Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/document/changeDocumentApproval"}},
+        {"name":"Approve/Reject Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/document/approveRejectDocumentRequest"}},
+        {"name":"Draft Save Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\",\n  \"Description\": \"\"\n}"},"url":"{{baseUrl}}/api/document/draftSaveDocumentRequest"}},
+        {"name":"Get Pending Document Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/document/getPendingDocumentRequests"}},
+        {"name":"Get Pending Document Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/document/getPendingDocumentRequestDetails"}}
       ]
     },
     {
@@ -124,12 +127,12 @@
         ]},"url":"{{baseUrl}}/api/excuse/submitExcuseRequest"}},
         {"name":"Submit Excuse On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
-          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"empid","type":"text","value":"{{EmpID}}"},
           {"key":"Date","type":"text","value":"2025-08-10"},
           {"key":"From","type":"text","value":"09:00"},
           {"key":"To","type":"text","value":"10:30"},
           {"key":"Reason","type":"text","value":"Medical"}
-        ]},"url":"{{baseUrl}}/api/excuse/submitExcuseOnBehalf"}},
+        ]},"url":"{{baseUrl}}/api/excuse/submitExcuseRequestOnBehalf"}},
         {"name":"Draft Save Excuse Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
           {"key":"Date","type":"text","value":"2025-08-10"},
@@ -139,12 +142,12 @@
         ]},"url":"{{baseUrl}}/api/excuse/draftSaveExcuseRequest"}},
         {"name":"Get Excuse Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getExcuseTransactions"}},
         {"name":"Get Excuse Types","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getExcuseTypes"}},
-        {"name":"Get Excuse Request Details","request":{"method":"GET","header":[{"key":"requestid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getExcuseRequestDetails"}},
+        {"name":"Get Excuse Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getExcuseRequestDetails"}},
         {"name":"Get Pending Excuse Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequests"}},
-        {"name":"Get Pending Excuse Request Details","request":{"method":"GET","header":[{"key":"requestid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequestDetails"}},
-        {"name":"Approve/Reject Excuse Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Approved\"\n}"},"url":"{{baseUrl}}/api/excuse/approveRejectExcuseRequest"}},
-        {"name":"Change Excuse Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"approvalStatus\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/excuse/changeExcuseApproval"}},
-        {"name":"Delegate Excuse Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/excuse/delegateExcuseApproval"}}
+        {"name":"Get Pending Excuse Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/excuse/getPendingExcuseRequestDetails"}},
+        {"name":"Approve/Reject Excuse Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Approved\"\n}"},"url":"{{baseUrl}}/api/excuse/approveRejectExcuseRequest"}},
+        {"name":"Change Excuse Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"approvalStatus\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/excuse/changeExcuseApproval"}},
+        {"name":"Delegate Excuse Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/excuse/delegateExcuseRequest"}}
       ]
     },
     {
@@ -153,13 +156,13 @@
         {"name":"Get Flight Ticket Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/flightTicket/getFlightTicketRequestDetails"}},
         {"name":"Get Flight Ticket Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/flightTicket/getFlightTicketTransactions"}},
         {"name":"Submit Flight Ticket Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"From\": \"LAX\",\n  \"To\": \"SFO\",\n  \"Date\": \"2025-08-10\"\n}"},"url":"{{baseUrl}}/api/flightTicket/submitFlightTicketRequest"}},
-        {"name":"Submit Flight Ticket Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"EmpID\": \"{{EmpID}}\",\n  \"From\": \"LAX\",\n  \"To\": \"SFO\"\n}"},"url":"{{baseUrl}}/api/flightTicket/submitFlightTicketRequestOnBehalf"}},
-        {"name":"Edit Flight Ticket Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"SeatPref\": \"Window\"\n}"},"url":"{{baseUrl}}/api/flightTicket/editFlightTicketRequest"}},
+        {"name":"Submit Flight Ticket Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"empid\": \"{{EmpID}}\",\n  \"From\": \"LAX\",\n  \"To\": \"SFO\"\n}"},"url":"{{baseUrl}}/api/flightTicket/submitFlightTicketRequestOnBehalf"}},
+        {"name":"Edit Flight Ticket Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"SeatPref\": \"Window\"\n}"},"url":"{{baseUrl}}/api/flightTicket/editFlightTicketRequest"}},
         {"name":"Draft Save Flight Ticket Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"From\": \"LAX\",\n  \"To\": \"SFO\"\n}"},"url":"{{baseUrl}}/api/flightTicket/draftSaveFlightTicketRequest"}},
-        {"name":"Delegate Flight Ticket Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/flightTicket/delegateFlightTicketApproval"}},
-        {"name":"Change Flight Ticket Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"approvalStatus\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/flightTicket/changeFlightTicketApproval"}},
-        {"name":"Approve/Reject Flight Ticket Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestId\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Approved\"\n}"},"url":"{{baseUrl}}/api/flightTicket/approveRejectFlightTicketRequest"}},
-        {"name":"Get Pending Flight Ticket Requests Details","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/flightTicket/getPendingFlightTicketRequestsDetails?requestId={{reqid}}"}},
+        {"name":"Delegate Flight Ticket Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/flightTicket/delegateFlightTicketRequest"}},
+        {"name":"Change Flight Ticket Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"approvalStatus\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/flightTicket/changeFlightTicketApproval"}},
+        {"name":"Approve/Reject Flight Ticket Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Approved\"\n}"},"url":"{{baseUrl}}/api/flightTicket/approveRejectFlightTicketRequest"}},
+        {"name":"Get Pending Flight Ticket Request Details","request":{"method":"GET","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/flightTicket/getPendingFlightTicketRequestDetails"}},
         {"name":"Get Pending Flight Ticket Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/flightTicket/getPendingFlightTicketRequests"}}
       ]
     },
@@ -175,11 +178,11 @@
         ]},"url":"{{baseUrl}}/api/leave/applyLeave"}},
         {"name":"Get Leave History","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveHistory"}},
         {"name":"Get Leave Types","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveTypes"}},
-        {"name":"Cancel Leave","request":{"method":"DELETE","header":[{"key":"leavereqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/cancelLeave"}},
-        {"name":"Approve/Reject Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeave"}},
+        {"name":"Cancel Leave","request":{"method":"DELETE","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/cancelLeave"}},
+        {"name":"Approve/Reject Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeave"}},
         {"name":"Get Pending Leaves","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getPendingLeaves"}},
-        {"name":"Get Leaves By Id","request":{"method":"GET","header":[{"key":"leavereqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getLeavesById"}},
-        {"name":"Update Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"Description\": \"Updated reason\"\n}"},"url":"{{baseUrl}}/api/leave/updatedLeave"}},
+        {"name":"Get Leaves By Id","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getLeavesById"}},
+        {"name":"Update Leave (legacy)","request":{"method":"PUT","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"Description\": \"Updated reason\"\n}"},"url":"{{baseUrl}}/api/leave/updatedLeave"}},
         {"name":"Get Leave Request Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveRequestTransactions"}},
         {"name":"Get Leave Request Details","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/leave/getLeaveRequestDetails"}},
         {"name":"Submit Leave","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
@@ -188,16 +191,16 @@
           {"key":"ToDate","type":"text","value":"2025-08-12"},
           {"key":"Type","type":"text","value":"Annual"},
           {"key":"Description","type":"text","value":"Family trip"}
-        ]},"url":"{{baseUrl}}/api/leave/submitLeave"}},
+        ]},"url":"{{baseUrl}}/api/leave/submitLeaveRequest"}},
         {"name":"Submit Leave On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
-          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"empid","type":"text","value":"{{EmpID}}"},
           {"key":"FromDate","type":"text","value":"2025-08-10"},
           {"key":"ToDate","type":"text","value":"2025-08-12"},
           {"key":"Type","type":"text","value":"Annual"},
           {"key":"Description","type":"text","value":"Family trip"}
-        ]},"url":"{{baseUrl}}/api/leave/submitLeaveOnBehalf"}},
-        {"name":"Edit Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"Description\": \"Updated reason\"\n}"},"url":"{{baseUrl}}/api/leave/editLeaveRequest"}},
+        ]},"url":"{{baseUrl}}/api/leave/submitLeaveRequestOnBehalf"}},
+        {"name":"Edit Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"Description\": \"Updated reason\"\n}"},"url":"{{baseUrl}}/api/leave/editLeaveRequest"}},
         {"name":"Draft Save Leave Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"attachment","type":"file","src":""},
           {"key":"FromDate","type":"text","value":"2025-08-10"},
@@ -205,17 +208,17 @@
           {"key":"Type","type":"text","value":"Annual"},
           {"key":"Description","type":"text","value":"Family trip"}
         ]},"url":"{{baseUrl}}/api/leave/draftSaveLeaveRequest"}},
-        {"name":"Get Pending Leave Request Details","request":{"method":"GET","header":[{"key":"leavereqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getPendingLeaveRequestDetails"}},
-        {"name":"Approve/Reject Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeaveRequest"}},
-        {"name":"Change Leave Request Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"LeaveReqID\": \"{{reqid}}\",\n  \"status\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/leave/changeLeaveRequestApproval"}},
-        {"name":"Delegate Leave Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"requestID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\",\n  \"Comment\": \"Delegating for coverage\"\n}"},"url":"{{baseUrl}}/api/leave/delegateLeaveApproval"}}
+        {"name":"Get Pending Leave Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/leave/getPendingLeaveRequestDetails"}},
+        {"name":"Approve/Reject Leave Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/leave/approveRejectLeaveRequest"}},
+        {"name":"Change Leave Request Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"status\": \"REVIEW\"\n}"},"url":"{{baseUrl}}/api/leave/changeLeaveRequestApproval"}},
+        {"name":"Delegate Leave Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\",\n  \"comment\": \"Delegating for coverage\"\n}"},"url":"{{baseUrl}}/api/leave/delegateLeaveRequest"}}
       ]
     },
     {
       "name": "Manager",
       "item": [
-        {"name":"Bulk Approve/Reject","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"items\": [{ \"ReqID\": \"{{reqid}}\", \"action\": \"approve\" }]\n}"},"url":"{{baseUrl}}/api/manager/bulk-approve-reject"}},
-        {"name":"Get Team Attendance Summary","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/manager/getTeamAttendanceSummary"}}
+        {"name":"Bulk Approve/Reject","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReqIDs\": [\"{{reqid}}\"],\n  \"type\": \"leave\",\n  \"action\": \"approve\",\n  \"comment\": \"\"\n}"},"url":"{{baseUrl}}/api/manager/bulk-approve-reject"}},
+        {"name":"Get Team Attendance Summary","request":{"method":"GET","header":[{"key":"month","value":"8"},{"key":"year","value":"2025"}],"url":"{{baseUrl}}/api/manager/getTeamAttendanceSummary"}}
       ]
     },
     {
@@ -223,7 +226,7 @@
       "item": [
         {"name":"Get Notifications","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/notification/getNotifications"}},
         {"name":"Create Notification","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"title\": \"System Update\",\n  \"message\": \"Planned maintenance\"\n}"},"url":"{{baseUrl}}/api/notification/createNotification"}},
-        {"name":"Broadcast Notification (typo in route)","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"message\": \"Hello team\"\n}"},"url":"{{baseUrl}}/api/notification/broadcaseNotification"}}
+        {"name":"Broadcast Notification","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"message\": \"Hello team\"\n}"},"url":"{{baseUrl}}/api/notification/broadcastNotification"}}
       ]
     },
     {
@@ -247,17 +250,17 @@
         ]},"url":"{{baseUrl}}/api/reimbursement/submitReimbursementRequest"}},
         {"name":"Submit Reimbursement Request On Behalf","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"receipt","type":"file","src":""},
-          {"key":"EmpID","type":"text","value":"{{EmpID}}"},
+          {"key":"empid","type":"text","value":"{{EmpID}}"},
           {"key":"Amount","type":"text","value":"100.00"}
         ]},"url":"{{baseUrl}}/api/reimbursement/submitReimbursementRequestOnBehalf"}},
-        {"name":"Edit Reimbursement Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\",\n  \"Purpose\": \"Updated taxi\"\n}"},"url":"{{baseUrl}}/api/reimbursement/editReimbursementRequest"}},
+        {"name":"Edit Reimbursement Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"Purpose\": \"Updated taxi\"\n}"},"url":"{{baseUrl}}/api/reimbursement/editReimbursementRequest"}},
         {"name":"Draft Save Reimbursement Request","request":{"method":"POST","header":[],"body":{"mode":"formdata","formdata":[
           {"key":"receipt","type":"file","src":""},
           {"key":"Amount","type":"text","value":"100.00"}
         ]},"url":"{{baseUrl}}/api/reimbursement/draftSaveReimbursementRequest"}},
-        {"name":"Delegate Reimbursement Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/reimbursement/delegateReimbursementRequest"}},
-        {"name":"Change Reimbursement Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/reimbursement/changeReimbursementApproval"}},
-        {"name":"Approve/Reject Reimbursement Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"ReimbursementID\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/reimbursement/approveRejectReimbursementRequest"}},
+        {"name":"Delegate Reimbursement Approval","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/reimbursement/delegateReimbursementRequest"}},
+        {"name":"Change Reimbursement Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/reimbursement/changeReimbursementApproval"}},
+        {"name":"Approve/Reject Reimbursement Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/reimbursement/approveRejectReimbursementRequest"}},
         {"name":"Get Pending Reimbursement Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/reimbursement/getPendingReimbursementRequests"}},
         {"name":"Get Pending Reimbursement Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/reimbursement/getPendingReimbursementRequestDetails"}}
       ]
@@ -266,13 +269,14 @@
       "name": "Request",
       "item": [
         {"name":"Get Request Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/request/getRequestTransactions"}},
-        {"name":"Get Request Timeline","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/request/getRequestTimeline"}}
+        {"name":"Get Request Timeline","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/request/getRequestTimeline"}},
+        {"name":"Get Delegates","request":{"method":"GET","header":[{"key":"empid","value":"{{EmpID}}"},{"key":"companyid","value":"{{CompanyID}}"}],"url":"{{baseUrl}}/api/request/getDelegates"}}
       ]
     },
     {
       "name": "Team",
       "item": [
-        {"name":"Get Team Heirarchy (typo)","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/team/getTeamHeirarchy"}},
+        {"name":"Get Team Hierarchy","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/team/getTeamHierarchy"}},
         {"name":"Get Team Calendar","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/team/getTeamCalendar"}}
       ]
     }

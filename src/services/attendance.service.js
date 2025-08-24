@@ -57,7 +57,26 @@ async function getCheckinCheckoutHistory(EmpID, CompanyID) {
   return formattedData;  // Return the formatted result
 }
 
+// Get the most recent check-in/checkout record
+async function getCheckinCheckoutTime(EmpID, CompanyID) {
+  const pool = await sql.connect(dbConfig);
+  const result = await pool.request()
+    .input('EmpID', sql.VarChar(30), EmpID)
+    .input('CompanyID', sql.VarChar(30), CompanyID)
+    .query('SELECT TOP 1 Date, CheckIn, CheckOut FROM CheckinCheckoutTable WHERE EmpID=@EmpID AND CompanyID=@CompanyID ORDER BY Date DESC');
+
+  if (!result.recordset || result.recordset.length === 0) return null;
+
+  const row = result.recordset[0];
+  return {
+    Date: formatDate(row.Date),
+    CheckIn: formatTime(row.CheckIn),
+    CheckOut: formatTime(row.CheckOut)
+  };
+}
+
 module.exports = {
   markAttendance,
-  getCheckinCheckoutHistory
+  getCheckinCheckoutHistory,
+  getCheckinCheckoutTime
 };

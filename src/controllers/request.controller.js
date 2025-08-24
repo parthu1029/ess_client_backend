@@ -22,3 +22,15 @@ exports.getRequestTimeline = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Get potential delegates for a user based on grade (same grade or grade-1)
+exports.getDelegates = async (req, res) => {
+  try {
+    const EmpID = req.headers['empid'] || req.cookies.empid;
+    const CompanyID = req.headers['companyid'] || req.cookies.context.companyid;
+    const delegates = await requestService.getDelegates(EmpID, CompanyID);
+    res.json(delegates);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
