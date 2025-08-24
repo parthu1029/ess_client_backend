@@ -34,11 +34,10 @@ These assets provide an industrial-grade, future-proof Postman setup for local d
 Accepted types: JPEG, PNG, PDF (see `src/middlewares/upload.js`). Max size: 30MB.
 
 ## Dynamic IDs
-- Some endpoints use headers or query params like `reqid` or `tripid`.
-- Tests auto-capture common IDs from responses (e.g., `LeaveReqID`, `ExcuseReqID`, `ReqID`, `tripId`) and set both `reqid` and `tripid` environment vars for chaining.
+- Some endpoints use headers like `reqid` (lowercase) or `tripid`.
+- Tests auto-capture common IDs from responses (e.g., `DocumentReqID`/`documentReqID`, `LeaveReqID`, `ExcuseReqID`, `ReqID`, `tripId`) and set both `reqid` and `tripid` environment vars for chaining.
 
 ## Known Route Oddities (mirrored for testing)
-- `document.routes.js`: `router.patch('approveRejectDocumentRequest', ...)` is missing a leading `/`.
 - `notification.routes.js`: uses `broadcaseNotification` instead of `broadcastNotification`.
 - `team.routes.js`: path `getTeamHeirarchy` (typo).
 - The collection keeps these as-is so you can test current behavior; consider fixing these in code before production.

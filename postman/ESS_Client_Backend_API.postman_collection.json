@@ -36,7 +36,7 @@
         "exec": [
           "// Opportunistically capture request IDs from responses for chaining",
           "let data = {}; try { data = pm.response.json(); } catch (e) {}",
-          "const keys = ['ReimbursementID','ReqID','requestId','requestID','tripId','LeaveReqID','LeaveID','DocumentID','ExcuseReqID','ExcuseID','BusinessTripID','FlightTicketID'];",
+          "const keys = ['DocumentReqID','documentReqID','ReimbursementID','ReqID','requestId','requestID','tripId','LeaveReqID','LeaveID','DocumentID','ExcuseReqID','ExcuseID','BusinessTripID','FlightTicketID'];",
           "for (const k of keys) { if (data && data[k]) { pm.environment.set('reqid', String(data[k])); pm.environment.set('tripid', String(data[k])); } }"
         ]
       }
@@ -104,13 +104,13 @@
         {"name":"Delete Document","request":{"method":"DELETE","header":[{"key":"id","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/document/deleteDocument"}},
         {"name":"Get Document Transactions","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/document/getDocumentTransactions"}},
         {"name":"Get Document Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/document/getDocumentRequestDetails"}},
-        {"name":"Submit Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\",\n  \"Description\": \"\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequest"}},
-        {"name":"Submit Document Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"empid\": \"{{EmpID}}\",\n  \"Type\": \"NOC\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequestOnBehalf"}},
-        {"name":"Edit Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"Description\": \"Updated\"\n}"},"url":"{{baseUrl}}/api/document/editDocumentRequest"}},
-        {"name":"Delegate Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\"\n}"},"url":"{{baseUrl}}/api/document/delegateDocumentRequest"}},
+        {"name":"Submit Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\",\n  \"Reason\": \"\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequest"}},
+        {"name":"Submit Document Request On Behalf","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"empid\": \"{{EmpID}}\",\n  \"Type\": \"NOC\",\n  \"Reason\": \"\"\n}"},"url":"{{baseUrl}}/api/document/submitDocumentRequestOnBehalf"}},
+        {"name":"Edit Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"Reason\": \"Updated\"\n}"},"url":"{{baseUrl}}/api/document/editDocumentRequest"}},
+        {"name":"Delegate Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"newApproverEmpID\": \"MGR001\",\n  \"comments\": \"Please handle\"\n}"},"url":"{{baseUrl}}/api/document/delegateDocumentRequest"}},
         {"name":"Change Document Approval","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\"\n}"},"url":"{{baseUrl}}/api/document/changeDocumentApproval"}},
-        {"name":"Approve/Reject Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\"\n}"},"url":"{{baseUrl}}/api/document/approveRejectDocumentRequest"}},
-        {"name":"Draft Save Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\",\n  \"Description\": \"\"\n}"},"url":"{{baseUrl}}/api/document/draftSaveDocumentRequest"}},
+        {"name":"Approve/Reject Document Request","request":{"method":"PATCH","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"reqid\": \"{{reqid}}\",\n  \"action\": \"approve\",\n  \"comments\": \"Looks good\"\n}"},"url":"{{baseUrl}}/api/document/approveRejectDocumentRequest"}},
+        {"name":"Draft Save Document Request","request":{"method":"POST","header":[{"key":"Content-Type","value":"application/json"}],"body":{"mode":"raw","raw":"{\n  \"Type\": \"NOC\",\n  \"Reason\": \"\"\n}"},"url":"{{baseUrl}}/api/document/draftSaveDocumentRequest"}},
         {"name":"Get Pending Document Requests","request":{"method":"GET","header":[],"url":"{{baseUrl}}/api/document/getPendingDocumentRequests"}},
         {"name":"Get Pending Document Request Details","request":{"method":"GET","header":[{"key":"reqid","value":"{{reqid}}"}],"url":"{{baseUrl}}/api/document/getPendingDocumentRequestDetails"}}
       ]

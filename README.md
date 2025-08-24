@@ -464,10 +464,10 @@ Base URL: `/api/leave`
 }
 ```
 
-### POST /submitLeave
-- Same as `POST /applyLeave` (alias).
+### POST /submitLeaveRequest
+- Same as `POST /applyLeave`.
 
-### POST /submitLeaveOnBehalf
+### POST /submitLeaveRequestOnBehalf
 - Cookies: `EmpID` (actor), `CompanyID`
 - Body: same as apply, plus `EmpID` (target employee)
 - Response (200): `{ message, LeaveReqID }`
@@ -536,7 +536,7 @@ Base URL: `/api/excuse`
 }
 ```
 
-### POST /submitExcuseOnBehalf
+### POST /submitExcuseRequestOnBehalf
 - Cookies: `EmpID` (actor), `CompanyID`
 - Body: same as submit, plus `EmpID` (target employee)
 - Response (200): `{ message, ExcuseReqID }`
@@ -551,7 +551,7 @@ Base URL: `/api/excuse`
 - Response: Array of timeline events
 
 ### GET /getExcuseRequestDetails
-- Headers: `requestid` (string)
+- Headers: `reqid` (string)
 - Response: Detailed excuse request object
 
 ### GET /getPendingExcuseRequests
@@ -559,71 +559,25 @@ Base URL: `/api/excuse`
 - Response: Array of pending requests to approve
 
 ### GET /getPendingExcuseRequestDetails
-- Headers: `requestid` (string)
+- Headers: `reqid` (string)
 - Response: Detailed info for a pending request
 
 ### PATCH /approveRejectExcuseRequest
-- Body: `{ requestId, action, comments }`
+- Body: `{ reqid, action, comments }`
 - Response: `{ message: "Excuse request approved/rejected" }`
 
 ### PATCH /changeExcuseApproval
-- Body: `{ requestId, approvalStatus }`
+- Body: `{ reqid, approvalStatus }`
 - Response: `{ message: "Excuse approval status changed" }`
 
-### POST /delegateExcuseApproval
-- Body: `{ requestId, newApproverEmpID }`
+### POST /delegateExcuseRequest
+- Body: `{ reqid, newApproverEmpID }`
 - Response: `{ message: "Excuse approval delegated" }`
 
 ---
 
 ## Document
 Base URL: `/api/document`
-
-### GET /downloadDocument
-- Cookies:
-  - `EmpID` (string)
-  - `CompanyID` (string)
-- Headers:
-  - `id` (string): Document ID
-- Response (200): binary file
-  - Content-Type: appropriate MIME
-  - Content-Disposition: attachment; filename="..."
-
-### POST /uploadDocument
-- Cookies:
-  - `EmpID` (string)
-  - `CompanyID` (string)
-- Request Body (multipart/form-data):
-  - `document` (file)
-  - JSON fields (as form fields):
-    - `DocumentReqID` (string)
-    - `Type` (string)
-    - `Reason` (string, optional)
-- Response (200):
-```json
-{
-  "message": "Document uploaded successfully"
-}
-```
-
-### PUT /updateDocumentById
-- Cookies:
-  - `EmpID` (string)
-  - `CompanyID` (string)
-- Request Body (application/json):
-```json
-{
-  "id": "DOC123456",
-  "Type": "Contract",
-  "Reason": "Updated terms"
-}
-```
-- Response (200):
-```json
-{
-  "message": "Document metadata updated"
-}
-```
 
 ### DELETE /deleteDocument
 - Cookies:
@@ -642,17 +596,18 @@ Base URL: `/api/document`
 - Cookies:
   - `EmpID` (string)
   - `CompanyID` (string)
-- Headers:
-  - `docid` (string)
 - Response (200):
 ```json
 [
   {
-    "timelineID": "abc123",
-    "action": "Created",
-    "actorEmpID": "FI000004",
-    "comments": null,
-    "actionDate": "2025-07-24T10:00:00.000Z"
+    "documentReqID": "DOC123456",
+    "EmpID": "FI000004",
+    "CompanyID": "COMP123",
+    "ReqDate": "2025-07-24",
+    "Status": "Pending",
+    "Type": "Contract",
+    "Reason": "Initial request",
+    "approverEmpID": "FI000010"
   }
 ]
 ```
@@ -661,14 +616,16 @@ Base URL: `/api/document`
 - Cookies:
   - `EmpID` (string)
   - `CompanyID` (string)
+- Headers:
+  - `reqid` (string)
 - Response (200):
 ```json
 {
   "documentReqID": "DOC123456",
-  "empID": "FI000004",
-  "companyID": "COMP123",
+  "EmpID": "FI000004",
+  "CompanyID": "COMP123",
   "ReqDate": "2025-07-24",
-  "status": "Pending",
+  "Status": "Pending",
   "approverEmpID": "FI000010",
   "Type": "Contract",
   "Reason": "Initial request"
@@ -682,7 +639,6 @@ Base URL: `/api/document`
 - Request Body (application/json):
 ```json
 {
-  "DocumentReqID": "DOC123456",
   "Type": "Contract",
   "Reason": "Need for audit"
 }
@@ -690,7 +646,8 @@ Base URL: `/api/document`
 - Response (200):
 ```json
 {
-  "message": "Document request submitted"
+  "message": "Document request submitted",
+  "DocumentReqID": "DOC123456"
 }
 ```
 
@@ -701,8 +658,7 @@ Base URL: `/api/document`
 - Request Body (application/json):
 ```json
 {
-  "EmpID": "FI000020",
-  "DocumentReqID": "DOC123456",
+  "empid": "FI000020",
   "Type": "Contract",
   "Reason": "Audit"
 }
@@ -710,7 +666,8 @@ Base URL: `/api/document`
 - Response (200):
 ```json
 {
-  "message": "Document request submitted on behalf"
+  "message": "Document request submitted on behalf",
+  "DocumentReqID": "DOC123456"
 }
 ```
 
@@ -721,7 +678,7 @@ Base URL: `/api/document`
 - Request Body (application/json):
 ```json
 {
-  "requestId": "DOC123456",
+  "reqid": "DOC123456",
   "Type": "Policy",
   "Reason": "Update"
 }
@@ -740,7 +697,6 @@ Base URL: `/api/document`
 - Request Body (application/json):
 ```json
 {
-  "DocumentReqID": "DOC123457",
   "Type": "Policy",
   "Reason": "Draft"
 }
@@ -748,18 +704,19 @@ Base URL: `/api/document`
 - Response (200):
 ```json
 {
-  "message": "Document request draft saved"
+  "message": "Document request draft saved",
+  "DocumentReqID": "DOC123457"
 }
 ```
 
-### POST /delegateDocumentApproval
+### POST /delegateDocumentRequest
 - Cookies:
   - `EmpID` (string) – approver
   - `CompanyID` (string)
 - Request Body (application/json):
 ```json
 {
-  "requestId": "DOC123456",
+  "reqid": "DOC123456",
   "newApproverEmpID": "FI000030",
   "comments": "Please review"
 }
@@ -778,8 +735,7 @@ Base URL: `/api/document`
 - Request Body (application/json):
 ```json
 {
-  "requestId": "DOC123456",
-  "approvalStatus": "Approved"
+  "reqid": "DOC123456"
 }
 ```
 - Response (200):
@@ -796,7 +752,7 @@ Base URL: `/api/document`
 - Request Body (application/json):
 ```json
 {
-  "requestId": "DOC123456",
+  "reqid": "DOC123456",
   "action": "approve",
   "comments": "Looks good"
 }
@@ -818,7 +774,7 @@ Base URL: `/api/document`
   {
     "documentReqID": "DOC123456",
     "Type": "Contract",
-    "status": "Pending",
+    "Status": "Pending",
     "ReqDate": "2025-07-24"
   }
 ]
@@ -829,15 +785,15 @@ Base URL: `/api/document`
   - `EmpID` (string)
   - `CompanyID` (string)
 - Headers:
-  - `requestid` (string)
+  - `reqid` (string)
 - Response (200):
 ```json
 {
   "documentReqID": "DOC123456",
-  "empID": "FI000004",
-  "companyID": "COMP123",
+  "EmpID": "FI000004",
+  "CompanyID": "COMP123",
   "ReqDate": "2025-07-24",
-  "status": "Pending",
+  "Status": "Pending",
   "approverEmpID": "FI000010",
   "Type": "Contract",
   "Reason": "Initial request"
@@ -854,14 +810,13 @@ Base URL: `/api/excuse`
 - Body: `multipart/form-data` file field `attachment` + JSON data
 - Response: `{ message: "Excuse submitted successfully" }`
 
-**POST /submitExcuseOnBehalf**
+**POST /submitExcuseRequestOnBehalf**
 - Cookies: `EmpID` (actor)
 - Body: file + JSON data
 - Response: `{ message: "Excuse submitted on behalf successfully" }`
 
 **GET /getExcuseTransactions**
 - Cookies: `EmpID`
-- Headers: `excuseid` (string, optional)
 - Response: Array of transactions
 
 **GET /getExcuseTypes**
@@ -869,6 +824,7 @@ Base URL: `/api/excuse`
 
 **GET /getExcuseRequestDetails**
 - Cookies: `EmpID`
+- Headers: `reqid` (string)
 - Response: JSON details
 
 **GET /getPendingExcuseRequests**
@@ -877,22 +833,22 @@ Base URL: `/api/excuse`
 
 **GET /getPendingExcuseRequestDetails**
 - Cookies: `EmpID`
-- Headers: `requestid` (string)
+- Headers: `reqid` (string)
 - Response: JSON details
 
 **PATCH /approveRejectExcuseRequest**
 - Cookies: `EmpID`
-- Body: `{ excuseId, action, comments }`
-- Response: `{ message: "Excuse approved/rejected successfully" }`
+- Body: `{ reqid, action, comments }`
+- Response: `{ message: "Excuse request approved/rejected" }`
 
 **PATCH /changeExcuseApproval**
 - Cookies: `EmpID`
-- Body: `{ requestId, approvalStatus }`
+- Body: `{ reqid, approvalStatus }`
 - Response: `{ message: "Excuse approval status changed" }`
 
-**POST /delegateExcuseApproval**
+**POST /delegateExcuseRequest**
 - Cookies: `EmpID` (actor)
-- Body: `{ requestId, newApproverEmpID, comments? }`
+- Body: `{ reqid, newApproverEmpID }`
 - Response: `{ message: "Excuse approval delegated" }`
 
 ---
@@ -928,23 +884,24 @@ Base URL: `/api/flightTicket`
 - Body: JSON data
 - Response: `{ message: "Flight ticket request draft saved" }`
 
-**POST /delegateFlightTicketApproval**
+**POST /delegateFlightTicketRequest**
 - Cookies: `EmpID` (actor)
-- Body: `{ requestId, newApproverEmpID, comments? }`
+- Body: `{ reqid, newApproverEmpID, comments? }`
 - Response: `{ message: "Flight ticket approval delegated" }`
 
 **PATCH /changeFlightTicketApproval**
 - Cookies: `EmpID`
-- Body: `{ requestId, approvalStatus }`
+- Body: `{ reqid, comments }`
 - Response: `{ message: "Flight ticket approval status changed" }`
 
 **PATCH /approveRejectFlightTicketRequest**
 - Cookies: `EmpID`
-- Body: `{ requestId, action, comments }`
+- Body: `{ reqid, action, comments }`
 - Response: `{ message: "Flight ticket request approved/rejected" }`
 
-**GET /getPendingFlightTicketRequestsDetails**
+**GET /getPendingFlightTicketRequestDetails**
 - Cookies: `EmpID`
+- Body: `{ reqid }`
 - Response: JSON details
 
 **GET /getPendingFlightTicketRequests**
@@ -1046,11 +1003,7 @@ Base URL: `/api/leave`
 - Body: `{ requestId, approvalStatus }`
 - Response: `{ message: "Leave approval status changed" }`
 
-**GET /getDelegates`
-- Cookies: `EmpID`
-- Response: Delegate list
-
-**POST /delegateLeaveApproval`
+**POST /delegateLeaveRequest`
 - Cookies: `EmpID` (actor)
 - Body: `{ requestId, newApproverEmpID, comments? }`
 - Response: `{ message: "Leave approval delegated" }`
@@ -1229,3 +1182,16 @@ Base URL: `/api/request`
 **GET /getRequestTransactions**
 - Cookies: `EmpID`
 - Response: Transaction history
+
+**GET /getRequestTimeline**
+- Headers: `reqid` (string)
+- Response: Array of timeline events for the given request ID
+
+**GET /getDelegates**
+- Headers: `empid`, `companyid` (or provided via cookies)
+- Response: Array of delegates sorted by name. Each item:
+  - `empid` (string)
+  - `name` (string)
+  - `position` (string)
+  - `department` (string)
+  - `photo` (binary buffer; request base64 if needed)
